@@ -86,7 +86,6 @@ def ensure_runtime_ready(*, restart_managed: bool = False) -> None:
         from power_teams.runtime.opencode_lifecycle import OpenCodeLifecycleManager, cleanup_orphan_opencode_servers
         from power_teams.runtime.opencode_supervisor import find_free_port
         mgr = OpenCodeLifecycleManager(db_path=DB_PATH)
-        cleanup_result = None
         if restart_managed:
             cleanup_result = cleanup_orphan_opencode_servers(db_path=DB_PATH)
             _append_text(_RUN_LOG, f"[{utc_now()}] fastapi orphan cleanup: {cleanup_result}\n")
@@ -97,7 +96,6 @@ def ensure_runtime_ready(*, restart_managed: bool = False) -> None:
                 result = mgr.reconcile_runtime(start_if_missing=False, restart_unowned=False)
             else:
                 result = {**result, "started": started}
-                raise RuntimeError(started["error"])
         _append_text(_RUN_LOG, f"[{utc_now()}] fastapi runtime reconcile: {result}\n")
     except Exception as exc:
         _append_text(_RUN_LOG, f"[{utc_now()}] fastapi runtime reconcile failed: {exc}\n")

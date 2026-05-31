@@ -21,7 +21,7 @@ RUNTIME_DIR = os.environ.get("POWER_TEAMS_RUNTIME_DIR") or "core/runtime"
 ROOT = Path(__file__).resolve().parents[3]
 RUNTIME_PATH = ROOT / RUNTIME_DIR
 
-DEFAULT_AGENT_FALLBACKS = tuple(os.environ.get("POWER_TEAMS_AGENT_FALLBACKS", "build").split(","))
+DEFAULT_AGENT_FALLBACKS = tuple(os.environ.get("POWER_TEAMS_AGENT_FALLBACKS", "sisyphus-junior,build").split(","))
 DEFAULT_MODEL_FALLBACKS = tuple(os.environ.get("POWER_TEAMS_MODEL_FALLBACKS", "minimax-coding-plan/MiniMax-M2.7").split(","))
 
 try:
@@ -474,15 +474,13 @@ def _release_manager_lock() -> None:
 
 def opencode_env() -> dict[str, str]:
     env = os.environ.copy()
-    from power_teams.runtime.opencode_supervisor import opencode_isolated_config_enabled
-    if opencode_isolated_config_enabled():
-        OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
-        OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
-        OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        env.pop("OPENCODE_HOME", None)
-        env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
-        env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
-        env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
+    OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
+    OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
+    OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    env.pop("OPENCODE_HOME", None)
+    env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
+    env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
+    env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
     return env
 
 
@@ -597,23 +595,82 @@ def _ping_opencode_port(host: str, port: int, timeout: float = 2.0) -> bool:
 
 
 def _restart_opencode_server(agent_name: str, host: str, port: int) -> bool:
-    try:
-        from power_teams.runtime.opencode_lifecycle import OpenCodeLifecycleManager
+    if not _is_opencode_process(host, port):
+        log(f"{agent_name}: port {host}:{port} not owned by opencode — skipping auto-restart (external server?)")
+        return False
+    managed_pid = _managed_opencode_pid_for_port(host, port)
+    if managed_pid:
+        log(f"{agent_name}: stopping managed opencode pid={managed_pid} on {host}:{port} before restart")
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(managed_pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+            else:
+                os.kill(managed_pid, 15)
+            time.sleep(1)
+        except Exception as exc:
+            log(f"{agent_name}: failed stopping managed opencode pid={managed_pid}: {exc}")
+    else:
+        log(f"{agent_name}: port {host}:{port} is opencode but not a managed running DB instance — skipping auto-restart")
+        return False
+    log(f"{agent_name}: opencode server not responding on {host}:{port} — attempting restart")
+    bin_path = opencode_bin()
+    if bin_path == "opencode":
+        log(f"{agent_name}: opencode binary not found, cannot restart server")
+        return False
 
-        result = OpenCodeLifecycleManager(db_path=DB_PATH).reconcile_runtime(
-            start_if_missing=True,
-            restart_unowned=False,
+    from power_teams.runtime.opencode_supervisor import (
+        build_opencode_serve_args as _oc_serve_args,
+        opencode_env as _oc_env,
+        opencode_debug_console_enabled as _oc_debug_console,
+        opencode_serve_creation_flags as _oc_serve_flags,
+        LOG_DIR as _OC_LOG_DIR,
+    )
+    _OC_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = _OC_LOG_DIR / f"{agent_name}_restart.log"
+    try:
+        log_f = log_path.open("a", encoding="utf-8", buffering=1)
+        log_f.write(f"\n[restart] restarting {agent_name} on {host}:{port}\n")
+        debug_console = _oc_debug_console()
+        serve_args = _oc_serve_args(bin_path, port, debug_console=debug_console)
+        proc = subprocess.Popen(
+            serve_args,
+            cwd=str(ROOT),
+            env=_oc_env(),
+            stdout=None if debug_console else subprocess.PIPE,
+            stderr=None if debug_console else subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdin=subprocess.DEVNULL,
+            creationflags=_oc_serve_flags(debug_console=debug_console),
         )
-        selected = result.get("selected") or {}
-        if selected:
-            log(f"{agent_name}: lifecycle selected OpenCode server {selected.get('host')}:{selected.get('port')}")
-            return True
-        started = result.get("started") or {}
-        log(f"{agent_name}: lifecycle could not restart OpenCode server: {started.get('error') or result}")
-        return False
+        if debug_console:
+            log_f.write("[restart] debug console enabled; OpenCode logs are visible in the serve shell\n")
+            log_f.close()
+        else:
+            threading.Thread(
+                target=lambda: [log_f.write(line) for line in (proc.stdout or [])],
+                daemon=True,
+            ).start()
+        log(f"{agent_name}: restart process pid={proc.pid}, waiting up to 30s for health")
     except Exception as exc:
-        log(f"{agent_name}: lifecycle restart failed: {exc}")
+        log(f"{agent_name}: failed to launch restart process: {exc}")
         return False
+
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        if _ping_opencode_port(host, port, timeout=1.0):
+            log(f"{agent_name}: opencode server back up on port {port}")
+            return True
+        time.sleep(1)
+    log(f"{agent_name}: opencode server did NOT become healthy within 30s after restart")
+    return False
 
 
 def is_insufficient_balance_error(error_msg: str) -> bool:
@@ -760,13 +817,15 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
     when that happens we read the completed assistant message from the server.
     """
     agent_row = dict(get_agent(agent_name))
-    binding = get_agent_binding(agent_name, path=DB_PATH)
-    if not binding:
-        raise RuntimeError(f"{agent_name} role is not bound to an OpenCode runtime")
-    agent_row["host"] = binding["host"] or agent_row["host"]
-    agent_row["port"] = int(binding["port"] or agent_row["port"])
-    agent_row["model"] = binding["model"] or agent_row.get("model")
-    agent_row["opencode_agent"] = binding["opencode_agent"] or agent_row.get("opencode_agent") or "build"
+    try:
+        binding = get_agent_binding(agent_name, path=DB_PATH)
+        if binding:
+            agent_row["host"] = binding["host"] or agent_row["host"]
+            agent_row["port"] = int(binding["port"] or agent_row["port"])
+            agent_row["model"] = binding["model"]
+            agent_row["opencode_agent"] = binding["opencode_agent"] or agent_row["opencode_agent"]
+    except Exception:
+        pass
     cwd = cwd or get_active_workspace_path() or str(ROOT)
     cwd_path = Path(cwd)
     if not cwd_path.exists():
@@ -858,24 +917,23 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
 
         if fallback_index < 0:
             if user_value and user_value.lower() not in {"", "default"}:
-                if agents_map and user_value not in agents_map:
-                    log(f"{agent_name}: opencode_agent='{user_value}' not found; falling back to build")
-                else:
-                    mode = agents_map.get(user_value, "")
-                    if mode != "subagent":
-                        return user_value
-                    log(f"{agent_name}: opencode_agent='{user_value}' is subagent; falling back to build")
+                mode = agents_map.get(user_value, "")
+                if mode != "subagent":
+                    return user_value
+                log(f"{agent_name}: opencode_agent='{user_value}' is subagent, skipping to fallback chain")
 
-        for fallback in DEFAULT_AGENT_FALLBACKS:
-            fallback = fallback.strip()
-            if fallback:
+        for i, fallback in enumerate(DEFAULT_AGENT_FALLBACKS):
+            if fallback_index >= 0 and i < fallback_index:
+                continue
+            mode = agents_map.get(fallback, "")
+            if not agents_map or mode == "primary":
                 return fallback
 
         if agents_map:
             for name, mode in agents_map.items():
                 if mode == "primary":
                     return name
-        return "build"
+        return None
 
     def _resolve_model(fallback_index: int = -1) -> str | None:
         user_value = str(agent_row.get("model") or "").strip()

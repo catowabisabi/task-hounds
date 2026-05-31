@@ -391,13 +391,6 @@ def opencode_debug_console_enabled() -> bool:
     return _truthy(_runtime_setting("opencode_debug_console"))
 
 
-def opencode_isolated_config_enabled() -> bool:
-    env_value = os.environ.get("POWER_TEAMS_OPENCODE_ISOLATED_CONFIG")
-    if env_value is not None:
-        return _truthy(env_value)
-    return _truthy(_runtime_setting("opencode_isolated_config"))
-
-
 def build_opencode_serve_args(opencode_bin: str, port: int, *, debug_console: bool = False) -> str | list[str]:
     args = [opencode_bin, "serve", "--port", str(port)]
     if debug_console:
@@ -420,14 +413,13 @@ def opencode_serve_creation_flags(*, debug_console: bool = False) -> int:
 
 def opencode_env() -> dict[str, str]:
     env = os.environ.copy()
-    if opencode_isolated_config_enabled():
-        OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
-        OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
-        OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        env.pop("OPENCODE_HOME", None)
-        env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
-        env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
-        env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
+    OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
+    OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
+    OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    env.pop("OPENCODE_HOME", None)
+    env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
+    env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
+    env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
     return env
 
 
