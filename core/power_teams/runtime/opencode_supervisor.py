@@ -226,12 +226,15 @@ class OpenCodeSupervisor:
         log = log_path.open("a", encoding="utf-8", buffering=1)
         log.write(f"\n[{utc_now()}] starting {spec.name} on {self.host}:{spec.port}\n")
 
+        args: str | list[str]
         args = [
             self.opencode_bin,
             "serve",
             "--port",
             str(spec.port),
         ]
+        if os.name == "nt":
+            args = f'"{self.opencode_bin}" serve --port {spec.port}'
         process = subprocess.Popen(
             args,
             cwd=str(spec.cwd),

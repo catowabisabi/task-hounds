@@ -634,8 +634,12 @@ def _restart_opencode_server(agent_name: str, host: str, port: int) -> bool:
     try:
         log_f = log_path.open("a", encoding="utf-8", buffering=1)
         log_f.write(f"\n[restart] restarting {agent_name} on {host}:{port}\n")
+        serve_args: str | list[str]
+        serve_args = [bin_path, "serve", "--port", str(port)]
+        if os.name == "nt":
+            serve_args = f'"{bin_path}" serve --port {port}'
         proc = subprocess.Popen(
-            [bin_path, "serve", "--port", str(port)],
+            serve_args,
             cwd=str(ROOT),
             env=_oc_env(),
             stdout=subprocess.PIPE,

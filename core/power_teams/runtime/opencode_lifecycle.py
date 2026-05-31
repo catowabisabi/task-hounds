@@ -420,6 +420,10 @@ class OpenCodeLifecycleManager:
 
         working_dir = cwd
         spec_port = port
+        serve_args: str | list[str]
+        serve_args = [opencode_bin, "serve", "--port", str(spec_port)]
+        if os.name == "nt":
+            serve_args = f'"{opencode_bin}" serve --port {spec_port}'
 
         if is_port_reachable(self.host, spec_port):
             existing = list_opencode_server_instances(owner="power_teams", status="running", path=self.db_path)
@@ -452,7 +456,7 @@ class OpenCodeLifecycleManager:
             log = log_path.open("a", encoding="utf-8", buffering=1)
             log.write(f"\n[{utc_now()}] starting managed lifecycle server on {self.host}:{spec_port}\n")
             proc = subprocess.Popen(
-                [opencode_bin, "serve", "--port", str(spec_port)],
+                serve_args,
                 cwd=str(working_dir),
                 env=opencode_env(),
                 stdout=subprocess.PIPE,
