@@ -228,6 +228,13 @@ class OpenCodeSupervisor:
 
         debug_console = opencode_debug_console_enabled()
         args = build_opencode_serve_args(self.opencode_bin, spec.port, debug_console=debug_console)
+
+        cmd_file = RUNTIME_DIR / "opencode-fire-debug-cmd.txt"
+        cmd_file.parent.mkdir(parents=True, exist_ok=True)
+        cmd_str = " ".join(f'"{a}"' if " " in str(a) else str(a) for a in args) if isinstance(args, list) else args
+        with cmd_file.open("a", encoding="utf-8") as fh:
+            fh.write(f"[{utc_now()}] supervisor:{spec.name}:{spec.port} | {cmd_str}\n")
+
         process = subprocess.Popen(
             args,
             cwd=str(spec.cwd),

@@ -428,6 +428,12 @@ class OpenCodeLifecycleManager:
         debug_console = opencode_debug_console_enabled()
         serve_args = build_opencode_serve_args(opencode_bin, spec_port, debug_console=debug_console)
 
+        cmd_file = RUNTIME_DIR / "opencode-fire-debug-cmd.txt"
+        cmd_file.parent.mkdir(parents=True, exist_ok=True)
+        cmd_str = " ".join(f'"{a}"' if " " in str(a) else str(a) for a in serve_args) if isinstance(serve_args, list) else str(serve_args)
+        with cmd_file.open("a", encoding="utf-8") as fh:
+            fh.write(f"[{utc_now()}] lifecycle:{spec_port} | {cmd_str}\n")
+
         if is_port_reachable(self.host, spec_port):
             existing = list_opencode_server_instances(owner="power_teams", status="running", path=self.db_path)
             for ex in existing:
@@ -493,6 +499,11 @@ class OpenCodeLifecycleManager:
             upsert_agent_binding("worker", server_instance_id=instance_id, host=self.host, port=spec_port, binding_source="auto", path=self.db_path)
             upsert_agent_binding("reviewer", server_instance_id=instance_id, host=self.host, port=spec_port, binding_source="auto", path=self.db_path)
             upsert_agent_binding("chat", server_instance_id=instance_id, host=self.host, port=spec_port, binding_source="auto", path=self.db_path)
+            self._bind_all_roles_to_server({
+                "id": instance_id,
+                "host": self.host,
+                "port": spec_port,
+            })
 
             return {
                 "id": instance_id,

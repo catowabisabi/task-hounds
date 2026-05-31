@@ -90,8 +90,17 @@ def _ensure_shared_opencode_server(supervisor, ping_interval: float = 300.0) -> 
     def current_endpoint() -> tuple[str, int]:
         with connect() as db:
             row = db.execute(
-                "SELECT host, port FROM agent_registry WHERE name='manager'"
+                """
+                SELECT host, port
+                  FROM agent_runtime_bindings
+                 WHERE role='manager'
+                 LIMIT 1
+                """
             ).fetchone()
+            if row is None:
+                row = db.execute(
+                    "SELECT host, port FROM agent_registry WHERE name='manager'"
+                ).fetchone()
         host = (row["host"] if row else supervisor.host) or supervisor.host
         port = int((row["port"] if row else supervisor.manager_port) or supervisor.manager_port)
         return host, port
@@ -100,11 +109,17 @@ def _ensure_shared_opencode_server(supervisor, ping_interval: float = 300.0) -> 
     if _opencode_reachable(host, port):
         return
 
-    log("OpenCode shared server not reachable - starting supervisor")
+    log(f"OpenCode shared server not reachable on {host}:{port} - reconciling lifecycle")
     try:
-        supervisor.start()
+        from power_teams.runtime.opencode_lifecycle import OpenCodeLifecycleManager
+
+        result = OpenCodeLifecycleManager(db_path=DB_PATH).reconcile_runtime(
+            start_if_missing=True,
+            restart_unowned=False,
+        )
+        log(f"OpenCode lifecycle reconcile result: {result}")
     except Exception as exc:
-        log(f"Error starting shared OpenCode server: {exc}")
+        log(f"Error reconciling shared OpenCode server: {exc}")
         return
 
     host, port = current_endpoint()
