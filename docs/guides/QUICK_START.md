@@ -16,7 +16,13 @@ npm install -g opencode-ai
 where opencode
 ```
 
-On Windows, `where opencode` should resolve the npm global wrapper first, such as `C:\Users\<you>\AppData\Roaming\npm\opencode.cmd`. Do not configure Task Hounds to use `C:\Users\<you>\.opencode\bin\opencode.exe`, because that standalone binary can use a different OpenCode runtime/session store.
+On Windows, configure Task Hounds to use the npm package binary:
+
+```text
+C:\Users\<you>\AppData\Roaming\npm\node_modules\opencode-ai\bin\opencode.exe
+```
+
+`C:\Users\<you>\AppData\Roaming\npm\opencode.cmd` is acceptable as a fallback. Do not configure Task Hounds to use `C:\Users\<you>\.opencode\bin\opencode.exe`, because that standalone binary can use a different OpenCode runtime/session store.
 
 ## Install
 

@@ -44,6 +44,13 @@ def find_opencode_bin(*, required: bool = False) -> str | None:
     if explicit:
         return _resolve_explicit(explicit)
 
+    if os.name == "nt":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            npm_package_bin = Path(appdata) / "npm" / "node_modules" / "opencode-ai" / "bin" / "opencode.exe"
+            if npm_package_bin.exists():
+                return str(npm_package_bin)
+
     names = ("opencode.cmd", "opencode") if os.name == "nt" else ("opencode",)
     for name in names:
         found = shutil.which(name)

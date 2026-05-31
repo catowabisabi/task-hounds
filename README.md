@@ -38,13 +38,13 @@ npm install -g opencode-ai
 where opencode
 ```
 
-On Windows, Task Hounds should resolve the npm global wrapper first, for example:
+On Windows, Task Hounds should use the npm package binary, for example:
 
 ```text
-C:\Users\<you>\AppData\Roaming\npm\opencode.cmd
+C:\Users\<you>\AppData\Roaming\npm\node_modules\opencode-ai\bin\opencode.exe
 ```
 
-Do not point Task Hounds at `C:\Users\<you>\.opencode\bin\opencode.exe`; that standalone binary can use a different runtime/session store and cause `opencode run --attach --session ...` to hang or report missing sessions.
+`C:\Users\<you>\AppData\Roaming\npm\opencode.cmd` is acceptable as a fallback, but the package binary above is preferred. Do not point Task Hounds at `C:\Users\<you>\.opencode\bin\opencode.exe`; that standalone binary can use a different runtime/session store and cause `opencode run --attach --session ...` to hang or report missing sessions.
 
 Install Python dependencies:
 
