@@ -421,10 +421,6 @@ def get_chat_runtime_status() -> dict:
     except Exception as exc:
         return {"enabled": False, "reason": f"binding_error: {exc}", "binding": None}
     if not binding:
-        chat_agent = next((a for a in get_db_agents() if isinstance(a, dict) and a.get("name") == "chat"), None)
-        if chat_agent:
-            binding = chat_agent
-    if not binding:
         return {"enabled": False, "reason": "chat role is not bound to an OpenCode server", "binding": None}
     host = binding["host"] or "127.0.0.1"
     port = int(binding["port"] or 0)
@@ -578,42 +574,23 @@ def ensure_opencode_servers() -> None:
     try:
         from power_teams.runtime.opencode_lifecycle import OpenCodeLifecycleManager
         debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Reconciling opencode runtime...")
-        reconciled = OpenCodeLifecycleManager(db_path=DB_PATH).reconcile_runtime(start_if_missing=False)
+        reconciled = OpenCodeLifecycleManager(db_path=DB_PATH).reconcile_runtime(start_if_missing=True)
         if reconciled.get("selected"):
             append_text(RUN_LOG, f"[{utc_now()}] opencode runtime selected {reconciled['selected']}\n")
             debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Runtime reconciled OK: {reconciled['selected']}")
             return
+        started = reconciled.get("started") or {}
+        if isinstance(started, dict) and started.get("error"):
+            raise RuntimeError(started["error"])
+        raise RuntimeError("opencode_runtime_unavailable")
     except Exception as exc:
-        append_text(RUN_LOG, f"[{utc_now()}] opencode reconcile failed before ensure: {exc}\n")
-        debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Reconcile failed (non-fatal): {exc}")
-    debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Checking agent ports reachable...")
-    if _agent_ports_reachable():
-        debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Agent ports reachable, early return")
-        return
-    debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Agent ports NOT reachable, need to start servers")
-    if _dashboard_supervisor is not None:
-        try:
-            debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Stopping stale supervisor...")
-            _dashboard_supervisor.stop()
-        except Exception as exc:
-            append_text(RUN_LOG, f"[{utc_now()}] failed stopping stale opencode supervisor: {exc}\n")
-            debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Stale supervisor stop failed: {exc}")
-        _dashboard_supervisor = None
-    from power_teams.runtime.opencode_supervisor import OpenCodeSupervisor
-    try:
-        debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Creating new OpenCodeSupervisor...")
-        supervisor = OpenCodeSupervisor(cwd=ROOT, startup_timeout=_opencode_startup_timeout)
-    except RuntimeError as exc:
         if "opencode command not found" in str(exc):
             _opencode_enabled = False
             append_text(RUN_LOG, f"[{utc_now()}] opencode disabled: {exc}\n")
             raise RuntimeError("opencode_disabled") from exc
+        append_text(RUN_LOG, f"[{utc_now()}] opencode lifecycle ensure failed: {exc}\n")
+        debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Lifecycle ensure failed: {exc}")
         raise
-    debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Starting OpenCodeSupervisor (may take {_opencode_startup_timeout}s)...")
-    supervisor.start()
-    _dashboard_supervisor = supervisor
-    debug_log(f"[DEBUG-LAUNCH-PAD] [STEP 7] Supervisor started successfully")
-    append_text(RUN_LOG, f"[{utc_now()}] restarted opencode servers for dashboard\n")
 
 
 def run_mvp_cycle():
@@ -3130,34 +3107,20 @@ def main(
         append_text(RUN_LOG, f"[{utc_now()}] startup opencode reconcile: {startup_reconcile}\n")
     except Exception as exc:
         append_text(RUN_LOG, f"[{utc_now()}] startup opencode reconcile failed: {exc}\n")
-    supervisor = None
     if start_opencode:
-        from power_teams.runtime.opencode_supervisor import OpenCodeSupervisor
-
         try:
-            supervisor = OpenCodeSupervisor(
-                manager_port=manager_port,
-                worker_port=worker_port,
-                cwd=ROOT,
-                startup_timeout=startup_timeout,
-            )
-            _dashboard_supervisor = supervisor
-            supervisor.start()
-            try:
-                from power_teams.runtime.opencode_lifecycle import OpenCodeLifecycleManager
-                post_reconcile = OpenCodeLifecycleManager(db_path=DB_PATH).reconcile_runtime(start_if_missing=False)
-                append_text(RUN_LOG, f"[{utc_now()}] post-start opencode reconcile: {post_reconcile}\n")
-            except Exception as exc:
-                append_text(RUN_LOG, f"[{utc_now()}] post-start opencode reconcile failed: {exc}\n")
-            if getattr(supervisor, "topology", "shared") == "shared":
-                print(f"shared opencode server listening on http://{supervisor.host}:{supervisor.manager_port}")
+            from power_teams.runtime.opencode_lifecycle import OpenCodeLifecycleManager
+
+            post_reconcile = OpenCodeLifecycleManager(db_path=DB_PATH).reconcile_runtime(start_if_missing=True)
+            append_text(RUN_LOG, f"[{utc_now()}] startup lifecycle opencode reconcile: {post_reconcile}\n")
+            selected = post_reconcile.get("selected")
+            if selected:
+                print(f"shared opencode server listening on http://{selected['host']}:{selected['port']}")
             else:
-                print(f"manager opencode server listening on http://{supervisor.host}:{supervisor.manager_port}")
-                print(f"worker opencode server listening on http://{supervisor.host}:{supervisor.worker_port}")
-                for role in ("reviewer", "chat"):
-                    server = next((item for item in supervisor.servers if item.spec.name == role), None)
-                    if server is not None:
-                        print(f"{role} opencode server listening on http://{supervisor.host}:{server.spec.port}")
+                started = post_reconcile.get("started") or {}
+                if isinstance(started, dict) and started.get("error"):
+                    raise RuntimeError(started["error"])
+                raise RuntimeError("opencode_runtime_unavailable")
         except RuntimeError as exc:
             if "opencode command not found" not in str(exc):
                 raise

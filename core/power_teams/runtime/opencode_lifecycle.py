@@ -79,13 +79,15 @@ OPENCODE_CONFIG_DIR = RUNTIME_DIR / "opencode_config"
 
 def opencode_env() -> dict[str, str]:
     env = os.environ.copy()
-    OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
-    OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
-    OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    env.pop("OPENCODE_HOME", None)
-    env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
-    env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
-    env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
+    from power_teams.runtime.opencode_supervisor import opencode_isolated_config_enabled
+    if opencode_isolated_config_enabled():
+        OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
+        OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
+        OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        env.pop("OPENCODE_HOME", None)
+        env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
+        env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
+        env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
     return env
 
 
@@ -415,6 +417,9 @@ class OpenCodeLifecycleManager:
         managed_count = len(list_opencode_server_instances(owner="power_teams", status="running", path=self.db_path))
         if managed_count >= policy["max_managed_opencode_servers"]:
             return {"error": f"max_managed_opencode_servers ({policy['max_managed_opencode_servers']}) reached"}
+        recent_failures = self._recent_start_failure_count()
+        if recent_failures >= 10:
+            return {"error": "opencode managed server start failed 10 times; fix OpenCode config or bind an external server before retrying"}
 
         cwd = cwd or _load_workspace_cwd() or ROOT
 
@@ -540,6 +545,7 @@ class OpenCodeLifecycleManager:
                     last_error_at=None if reachable else utc_now(),
                     path=self.db_path,
                 )
+                self._clear_bindings_for_server(int(item["id"]), reason)
                 stopped.append({"id": item["id"], "host": host, "port": port, "reason": reason})
             else:
                 update_opencode_server_status(int(item["id"]), "running", last_seen=utc_now(), path=self.db_path)
@@ -577,6 +583,56 @@ class OpenCodeLifecycleManager:
             "usable_count": len(usable),
         }
 
+    def _recent_start_failure_count(self, limit: int = 10) -> int:
+        with connect(self.db_path) as db:
+            rows = db.execute(
+                """
+                SELECT status, stop_reason, last_error
+                  FROM opencode_server_instances
+                 WHERE owner='power_teams'
+                 ORDER BY id DESC
+                 LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        failures = 0
+        for row in rows:
+            status = str(row["status"] or "")
+            reason = str(row["stop_reason"] or "")
+            error = str(row["last_error"] or "")
+            if status == "running":
+                break
+            if status in {"crashed", "stopped"} and (
+                reason in {"startup_failed", "stale_no_reachable_opencode", "process_gone"}
+                or "health check" in error
+                or "exited before health check" in error
+            ):
+                failures += 1
+                continue
+            break
+        return failures
+
+    def _clear_bindings_for_server(self, server_id: int, reason: str) -> None:
+        with connect(self.db_path) as db:
+            roles = [
+                row["role"]
+                for row in db.execute(
+                    "SELECT role FROM agent_runtime_bindings WHERE server_instance_id=?",
+                    (server_id,),
+                ).fetchall()
+            ]
+            db.execute("DELETE FROM agent_runtime_bindings WHERE server_instance_id=?", (server_id,))
+            for role in roles:
+                db.execute(
+                    """
+                    UPDATE agent_registry
+                       SET state='error', last_error=?, updated_at=CURRENT_TIMESTAMP
+                     WHERE name=?
+                    """,
+                    (f"OpenCode binding cleared: {reason}", role),
+                )
+            db.commit()
+
     def _bind_all_roles_to_server(self, server: dict) -> None:
         server_id = int(server["id"])
         host = server.get("host") or self.host
@@ -604,6 +660,8 @@ class OpenCodeLifecycleManager:
                 agent_names = {str(a.get("id") or a.get("name") or "").strip() for a in discovered} if discovered else set()
                 agent_modes = {str(a.get("id") or a.get("name") or "").strip(): str(a.get("mode") or "") for a in discovered} if discovered else {}
                 if current_agent and current_agent in agent_modes and agent_modes[current_agent] == "subagent":
+                    current_agent = "build"
+                if agent_names and current_agent not in agent_names:
                     current_agent = "build"
                 opencode_agent = current_agent
                 model = (binding["model"] if binding else None) or (current["model"] if current else None)

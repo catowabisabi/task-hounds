@@ -50,10 +50,12 @@ def _utc_now() -> str:
 
 def _opencode_env() -> dict[str, str]:
     env = os.environ.copy()
-    OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
-    OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
-    env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
+    from power_teams.runtime.opencode_supervisor import opencode_isolated_config_enabled
+    if opencode_isolated_config_enabled():
+        OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
+        OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
+        env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
     return env
 
 
