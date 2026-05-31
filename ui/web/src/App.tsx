@@ -551,6 +551,19 @@ export default function App() {
   const [autoRelease, setAutoRelease] = useState(true);
   const [sessionReloadKey, setSessionReloadKey] = useState(0);
   const [directiveClearKey, setDirectiveClearKey] = useState(0);
+  const [apiError, setApiError] = useState<{ message: string; path: string } | null>(null);
+
+  useEffect(() => {
+    const onApiError = (event: Event) => {
+      const detail = (event as CustomEvent<{ message?: string; path?: string }>).detail;
+      setApiError({
+        message: detail?.message || "API error",
+        path: detail?.path || "",
+      });
+    };
+    window.addEventListener("task-hounds-api-error", onApiError);
+    return () => window.removeEventListener("task-hounds-api-error", onApiError);
+  }, []);
 
   // Load auto_release flag from backend settings on mount
   useEffect(() => {
@@ -906,6 +919,39 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {apiError && createPortal(
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center px-6"
+          style={{ background: "rgba(0,0,0,0.68)" }}
+          onClick={() => setApiError(null)}
+        >
+          <div
+            className="max-w-lg w-full rounded p-4"
+            style={{ background: "var(--bg-panel)", border: "1px solid var(--red-dim)", boxShadow: "0 8px 24px rgba(0,0,0,0.65)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[14px]" style={{ color: "var(--red)" }}>!</span>
+              <span className="text-[12px] font-semibold" style={{ color: "var(--red)" }}>API Error</span>
+            </div>
+            {apiError.path && (
+              <p className="text-[10px] font-mono mb-2 break-all" style={{ color: "var(--text-dim)" }}>{apiError.path}</p>
+            )}
+            <p className="text-[12px] leading-relaxed whitespace-pre-wrap break-words mb-3" style={{ color: "var(--text-primary)" }}>
+              {apiError.message}
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setApiError(null)}
+                className="px-3 py-1 rounded text-[11px] font-medium"
+                style={{ background: "var(--red-bg)", color: "var(--red)", border: "1px solid var(--red-dim)" }}
+              >Close</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {confirmClear && (

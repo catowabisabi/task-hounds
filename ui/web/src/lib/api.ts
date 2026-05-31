@@ -4,6 +4,12 @@ const LEGACY_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8765";
 let _base: string | null = null;
 let _basePromise: Promise<string> | null = null;
 
+function emitApiError(message: string, path: string) {
+  window.dispatchEvent(new CustomEvent("task-hounds-api-error", {
+    detail: { message, path },
+  }));
+}
+
 async function tryPing(url: string, timeout = 3000): Promise<boolean> {
   for (const endpoint of ["/api/health", "/api/ping"]) {
     try {
@@ -105,13 +111,27 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     let detail = "";
     try {
       const body = await res.json();
-      detail = body?.message || body?.error || "";
+      detail = body?.message || body?.error || body?.detail || "";
     } catch {
       try { detail = await res.text(); } catch { detail = ""; }
     }
-    throw new Error(`${res.status} ${res.statusText}${detail ? `: ${detail}` : ""}`);
+    const message = `${res.status} ${res.statusText}${detail ? `: ${detail}` : ""}`;
+    emitApiError(message, path);
+    throw new Error(message);
   }
-  return res.json();
+  const body = await res.json();
+  if (
+    body &&
+    typeof body === "object" &&
+    "error" in body &&
+    (body as { ok?: unknown }).ok !== true
+  ) {
+    const value = (body as { error?: unknown }).error;
+    const message = typeof value === "string" ? value : JSON.stringify(value);
+    emitApiError(message || "API returned an error", path);
+    throw new Error(message || "API returned an error");
+  }
+  return body;
 }
 
 export const apiGet    = <T>(path: string) => apiFetch<T>(path);
