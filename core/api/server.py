@@ -274,7 +274,24 @@ def get_suggestion_data():
             row = _db().get_active_suggestion(path=DB_PATH)
         if row is None:
             return None
-        return dict(row)
+        data = dict(row)
+        status = data.get("status") or "pending"
+        queue_status = {
+            "pending": "queued_for_manager",
+            "released": "queued_for_worker",
+            "worker_done": "manager_reviewing",
+            "done": "processed",
+            "paused": "paused",
+        }.get(status, status)
+        data["queue_status"] = queue_status
+        data["status_label"] = {
+            "queued_for_manager": "Queued for manager",
+            "queued_for_worker": "Queued for worker",
+            "manager_reviewing": "Manager reviewing",
+            "processed": "Processed",
+            "paused": "Paused",
+        }.get(queue_status, status)
+        return data
     except Exception as e:
         return {"error": str(e)}
 
@@ -294,7 +311,35 @@ def get_manager_messages_data():
             rows = _db().list_manager_messages(session_id=session_id, limit=50, path=DB_PATH)
         else:
             rows = _db().list_manager_messages(limit=50, path=DB_PATH)
-        return [dict(r) for r in rows]
+        settings = read_settings()
+        processed = settings.get("processed_manager_message_ids", {})
+        last_seen = int(processed.get(session_id, 0) or 0)
+        manager_state = ""
+        try:
+            manager_state = (dict(_db().get_agent("manager") or {}).get("state") or "").lower()
+        except Exception:
+            manager_state = ""
+        data = []
+        for row in rows:
+            item = dict(row)
+            content = item.get("content") or ""
+            is_human = content.startswith("Human message to manager:")
+            if is_human and int(item.get("id") or 0) > last_seen:
+                queue_status = "manager_processing" if manager_state == "busy" else "queued_for_manager"
+            elif is_human:
+                queue_status = "processed"
+            else:
+                queue_status = "manager_response"
+            item["is_human"] = is_human
+            item["queue_status"] = queue_status
+            item["status_label"] = {
+                "queued_for_manager": "Queued for manager",
+                "manager_processing": "Manager processing",
+                "processed": "Processed",
+                "manager_response": "Manager response",
+            }.get(queue_status, queue_status)
+            data.append(item)
+        return data
     except Exception as e:
         return []
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiGet, apiPost } from "../../../lib/api";
 import type { Suggestion } from "../../../lib/api";
+import { Tooltip } from "../../ui/Tooltip";
 import { FullscreenMarkdownModal } from "./FullscreenMarkdownModal";
 
 const SC: Record<string, { bg: string; text: string; border: string }> = {
@@ -70,7 +71,10 @@ export function SuggestionPanel({ suggestion, onAction }: SuggestionPanelProps) 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--purple)" }}>Suggestion Queue</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--purple)" }}>Suggestion Queue</p>
+          <Tooltip label="New suggestions start as queued for Manager. Manager turns them into worker tasks, Worker reports back, then Manager reviews and marks them processed." />
+        </div>
         {suggestion?.content && (
           <button onClick={() => setModal(true)} className="text-[11px] px-1.5 py-0.5 rounded transition-colors" style={{ color: "var(--text-dim)", border: "1px solid var(--border)" }} onMouseEnter={e => (e.currentTarget.style.color = "var(--purple)")} onMouseLeave={e => (e.currentTarget.style.color = "var(--text-dim)")}>⤢</button>
         )}
@@ -80,7 +84,7 @@ export function SuggestionPanel({ suggestion, onAction }: SuggestionPanelProps) 
         <div className="space-y-2">
           <div className="text-[12px] rounded p-2 max-h-24 overflow-y-auto whitespace-pre-wrap" style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>{suggestion.content}</div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}>{suggestion.status}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: sc.bg, color: sc.text, border: `1px solid ${sc.border}` }}>{suggestion.status_label ?? suggestion.status}</span>
           </div>
           <div className="flex flex-wrap gap-1">
             {suggestion.status !== "released" && suggestion.status !== "done" && (
@@ -108,7 +112,7 @@ export function SuggestionPanel({ suggestion, onAction }: SuggestionPanelProps) 
                   {item.content}
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: itemSc.bg, color: itemSc.text, border: `1px solid ${itemSc.border}` }}>{status}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: itemSc.bg, color: itemSc.text, border: `1px solid ${itemSc.border}` }}>{item.status_label ?? status}</span>
                   <button onClick={() => act("done", item.id)} className="ml-auto px-1.5 py-0.5 text-[10px] rounded" style={{ background: "var(--bg-base)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>Done</button>
                   {status !== "released" && (
                     <button onClick={() => act("release", item.id)} className="px-1.5 py-0.5 text-[10px] rounded" style={{ background: "var(--blue-bg)", color: "var(--blue)", border: "1px solid var(--blue-dim)" }}>Release</button>

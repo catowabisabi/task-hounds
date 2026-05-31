@@ -169,6 +169,8 @@ export interface Suggestion {
   id?: number;
   content?: string;
   status?: string;
+  queue_status?: string;
+  status_label?: string;
   verification?: string;
   related_files?: string[];
   created_at?: string;
@@ -178,6 +180,9 @@ export interface ManagerMessage {
   id: number;
   content: string;
   created_at: string;
+  is_human?: boolean;
+  queue_status?: string;
+  status_label?: string;
 }
 
 export interface ChatMessage {

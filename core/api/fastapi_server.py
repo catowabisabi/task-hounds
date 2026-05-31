@@ -192,6 +192,8 @@ class Suggestion(BaseModel):
     id: int | None = None
     content: str | None = None
     status: str | None = None
+    queue_status: str | None = None
+    status_label: str | None = None
     verification: str | None = None
     related_files: list[str] | None = None
     created_at: str | None = None
@@ -208,6 +210,9 @@ class ManagerMessage(BaseModel):
     id: int
     content: str
     created_at: str
+    is_human: bool | None = None
+    queue_status: str | None = None
+    status_label: str | None = None
 
 
 class ManagerMessageCreate(BaseModel):
@@ -840,7 +845,26 @@ def get_suggestion():
 def get_unscoped_suggestions():
     try:
         rows = _db().list_unscoped_active_suggestions(path=DB_PATH)
-        return [dict(row) for row in rows]
+        data = []
+        for row in rows:
+            item = dict(row)
+            status = item.get("status") or "pending"
+            item["queue_status"] = {
+                "pending": "queued_for_manager",
+                "released": "queued_for_worker",
+                "worker_done": "manager_reviewing",
+                "done": "processed",
+                "paused": "paused",
+            }.get(status, status)
+            item["status_label"] = {
+                "queued_for_manager": "Queued for manager",
+                "queued_for_worker": "Queued for worker",
+                "manager_reviewing": "Manager reviewing",
+                "processed": "Processed",
+                "paused": "Paused",
+            }.get(item["queue_status"], status)
+            data.append(item)
+        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
