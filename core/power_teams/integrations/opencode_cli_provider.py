@@ -47,9 +47,11 @@ def _append(path: Path, value: str) -> None:
 def _opencode_env() -> dict[str, str]:
     env = os.environ.copy()
     OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
+    OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
     OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     env.pop("OPENCODE_HOME", None)
     env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
+    env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
     env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
     return env
 

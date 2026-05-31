@@ -37,6 +37,7 @@ from power_teams.runtime import result_schema as rs
 ROOT = Path(__file__).resolve().parents[4]
 LOG_DIR = ROOT / "core" / "runtime" / "logs"
 OPENCODE_CONFIG_HOME = ROOT / "core" / "runtime" / "opencode_home" / ".config"
+OPENCODE_DATA_HOME = ROOT / "core" / "runtime" / "opencode_home" / ".local" / "share"
 OPENCODE_CONFIG_DIR  = ROOT / "core" / "runtime" / "opencode_config"
 FILES_DIR            = ROOT / "core" / "runtime" / "agent_files"
 
@@ -51,8 +52,10 @@ def _utc_now() -> str:
 def _opencode_env() -> dict[str, str]:
     env = os.environ.copy()
     OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
+    OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
     OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
+    env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
     env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
     return env
 
