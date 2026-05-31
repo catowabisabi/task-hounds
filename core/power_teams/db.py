@@ -242,7 +242,7 @@ def get_active_context(path: Path = DB_PATH) -> dict:
     }
     if settings_file.exists():
         try:
-            settings = _json.loads(settings_file.read_text(encoding="utf-8"))
+            settings = _json.loads(settings_file.read_text(encoding="utf-8-sig"))
             result["workspace_id"] = settings.get("active_workspace_id") or settings.get("workspace_id")
             result["workspace_path"] = settings.get("workspace_path")
             result["project_session_id"] = settings.get("active_project_session") or settings.get("project_session_id")

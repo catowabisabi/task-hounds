@@ -347,7 +347,7 @@ def read_settings() -> dict:
     settings_path = RUNTIME_DIR / "settings.json"
     try:
         if settings_path.exists():
-            return json.loads(settings_path.read_text(encoding="utf-8"))
+            return json.loads(settings_path.read_text(encoding="utf-8-sig"))
     except Exception:
         pass
     return {}
