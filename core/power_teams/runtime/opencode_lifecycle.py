@@ -437,7 +437,7 @@ class OpenCodeLifecycleManager:
             status="starting",
             pid=None,
             cwd=str(working_dir),
-            command=f"opencode serve --hostname {self.host} --port {spec_port}",
+            command=f'"{opencode_bin}" serve --port {spec_port}',
             topology=topology,
             roles_json=json.dumps(["manager", "worker", "reviewer", "chat"]) if topology == "shared" else None,
             project_session_id=project_session_id,
@@ -452,7 +452,7 @@ class OpenCodeLifecycleManager:
             log = log_path.open("a", encoding="utf-8", buffering=1)
             log.write(f"\n[{utc_now()}] starting managed lifecycle server on {self.host}:{spec_port}\n")
             proc = subprocess.Popen(
-                [opencode_bin, "serve", "--hostname", self.host, "--port", str(spec_port)],
+                [opencode_bin, "serve", "--port", str(spec_port)],
                 cwd=str(working_dir),
                 env=opencode_env(),
                 stdout=subprocess.PIPE,

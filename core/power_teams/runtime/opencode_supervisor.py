@@ -229,8 +229,6 @@ class OpenCodeSupervisor:
         args = [
             self.opencode_bin,
             "serve",
-            "--hostname",
-            self.host,
             "--port",
             str(spec.port),
         ]
@@ -315,7 +313,7 @@ class OpenCodeSupervisor:
             status="running",
             pid=managed.process.pid,
             cwd=str(managed.spec.cwd),
-            command=f"{self.opencode_bin} serve --hostname {self.host} --port {managed.spec.port}",
+            command=f'"{self.opencode_bin}" serve --port {managed.spec.port}',
             topology=self.topology,
             roles_json=json.dumps(roles),
             agent_bindings_json=json.dumps({role: managed.spec.port for role in roles}),
