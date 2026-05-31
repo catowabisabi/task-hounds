@@ -29,6 +29,8 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from power_teams.runtime.opencode_binary import find_opencode_bin
+
 from power_teams.runtime.backends.base import BackendAdapter
 from power_teams.runtime import result_schema as rs
 
@@ -319,7 +321,7 @@ class OpenCodeAdapter(BackendAdapter):
             return None
 
     def _build_cmd(self, base_url: str, session_id: str | None) -> list[str]:
-        opencode_bin = shutil.which("opencode") or "opencode"
+        opencode_bin = find_opencode_bin(required=True)
         agent_name = str(self._row.get("opencode_agent") or self._cfg.get("agent") or "").strip()
         model = self._row.get("model")
 

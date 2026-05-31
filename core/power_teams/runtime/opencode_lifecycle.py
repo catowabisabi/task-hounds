@@ -90,15 +90,8 @@ def opencode_env() -> dict[str, str]:
 
 
 def find_opencode_bin() -> str | None:
-    import shutil
-    found = shutil.which("opencode")
-    if found:
-        return found
-    if os.name == "nt":
-        local_bin = Path(os.environ.get("USERPROFILE", "")) / ".opencode" / "bin" / "opencode.exe"
-        if local_bin.exists():
-            return str(local_bin)
-    return None
+    from power_teams.runtime.opencode_binary import find_opencode_bin as _find_opencode_bin
+    return _find_opencode_bin(required=False)
 
 
 def utc_now() -> str:

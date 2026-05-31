@@ -12,14 +12,16 @@ export function SettingsToggle({ onRefresh }: { onRefresh: () => void }) {
   const [language, setLanguage] = useState("en");
   const [silenceTimeout, setSilenceTimeout] = useState(480);
   const [hardTimeout, setHardTimeout] = useState(1200);
+  const [opencodeBin, setOpencodeBin] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    apiGet<{ language?: string; silence_timeout?: number; silence_timeout_seconds?: number; hard_timeout?: number; hard_timeout_seconds?: number }>("/api/settings")
+    apiGet<{ language?: string; silence_timeout?: number; silence_timeout_seconds?: number; hard_timeout?: number; hard_timeout_seconds?: number; opencode_bin?: string }>("/api/settings")
       .then(s => {
         if (s.language) setLanguage(s.language);
         setSilenceTimeout(Number(s.silence_timeout_seconds ?? s.silence_timeout ?? 480));
         setHardTimeout(Number(s.hard_timeout_seconds ?? s.hard_timeout ?? 1200));
+        setOpencodeBin(s.opencode_bin ?? "");
       })
       .catch(() => {});
   }, []);
@@ -51,6 +53,18 @@ export function SettingsToggle({ onRefresh }: { onRefresh: () => void }) {
       setSaving(false);
     }
   }, [hardTimeout, onRefresh, silenceTimeout]);
+
+  const saveOpencodeBin = useCallback(async () => {
+    setSaving(true);
+    try {
+      await apiPost("/api/settings", {
+        opencode_bin: opencodeBin.trim(),
+      });
+      onRefresh();
+    } finally {
+      setSaving(false);
+    }
+  }, [onRefresh, opencodeBin]);
 
   return (
     <div className="relative">
@@ -118,6 +132,31 @@ export function SettingsToggle({ onRefresh }: { onRefresh: () => void }) {
               style={{ background: "var(--amber-bg)", color: "var(--amber)", border: "1px solid var(--amber-dim)" }}
             >
               Save timeouts
+            </button>
+          </div>
+          <div style={{ borderTop: "1px solid var(--border)", marginTop: "8px", paddingTop: "8px" }}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-dim)" }}>OpenCode</p>
+            <label className="block text-[10px] mb-2" style={{ color: "var(--text-secondary)" }}>
+              Binary path
+              <input
+                type="text"
+                value={opencodeBin}
+                onChange={e => setOpencodeBin(e.target.value)}
+                className="w-full mt-1 px-2 py-1 rounded text-[11px]"
+                placeholder="C:\Users\you\AppData\Roaming\npm\opencode.cmd"
+                style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+              />
+            </label>
+            <p className="text-[10px] mb-2 leading-snug" style={{ color: "var(--text-dim)" }}>
+              Use the npm global wrapper. Do not use .opencode\bin\opencode.exe.
+            </p>
+            <button
+              onClick={saveOpencodeBin}
+              disabled={saving}
+              className="w-full px-2 py-1 text-[10px] rounded transition-colors disabled:opacity-40"
+              style={{ background: "var(--blue-bg)", color: "var(--blue)", border: "1px solid var(--blue-dim)" }}
+            >
+              Save OpenCode path
             </button>
           </div>
           <div style={{ borderTop: "1px solid var(--border)", marginTop: "8px", paddingTop: "8px" }}>

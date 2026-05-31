@@ -24,6 +24,7 @@ from power_teams.db import (
     update_opencode_server_status,
     upsert_agent_binding,
 )
+from power_teams.runtime.opencode_binary import find_opencode_bin
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -64,19 +65,7 @@ class OpenCodeSupervisor:
     ) -> None:
         self.host = host
         self.cwd = (cwd or ROOT).resolve()
-        self.opencode_bin = opencode_bin or shutil.which("opencode")
-        if not self.opencode_bin:
-            for ext in (".ps1", ".cmd", ".bat"):
-                found = shutil.which(f"opencode{ext}")
-                if found:
-                    self.opencode_bin = found
-                    break
-        if not self.opencode_bin and os.name == "nt":
-            local_bin = Path(os.environ.get("USERPROFILE", "")) / ".opencode" / "bin" / "opencode.exe"
-            if local_bin.exists():
-                self.opencode_bin = str(local_bin)
-        if not self.opencode_bin:
-            raise RuntimeError("opencode command not found on PATH")
+        self.opencode_bin = opencode_bin or find_opencode_bin(required=True)
         self.topology = os.environ.get("POWER_TEAMS_OPENCODE_TOPOLOGY", "shared").lower().strip()
         self.manager_port = manager_port or int(os.environ.get("POWER_TEAMS_OPENCODE_PORT", "0") or 0) or find_free_port()
         self.worker_port = worker_port or (

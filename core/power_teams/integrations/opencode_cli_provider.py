@@ -55,15 +55,8 @@ def _opencode_env() -> dict[str, str]:
 
 
 def _opencode_bin() -> str:
-    import shutil
-    found = shutil.which("opencode")
-    if found:
-        return found
-    if os.name == "nt":
-        local_bin = Path(os.environ.get("USERPROFILE", "")) / ".opencode" / "bin" / "opencode.exe"
-        if local_bin.exists():
-            return str(local_bin)
-    return "opencode"
+    from power_teams.runtime.opencode_binary import find_opencode_bin
+    return find_opencode_bin(required=True)
 
 
 def _server_reachable(host: str, port: int, timeout: float = 2.0) -> bool:
