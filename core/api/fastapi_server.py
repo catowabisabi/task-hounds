@@ -836,6 +836,15 @@ def get_suggestion():
     return get_suggestion_data() or {}
 
 
+@app.get("/api/suggestions/unscoped", response_model=list[Suggestion], tags=["suggestion"])
+def get_unscoped_suggestions():
+    try:
+        rows = _db().list_unscoped_active_suggestions(path=DB_PATH)
+        return [dict(row) for row in rows]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.put("/api/suggestion", tags=["suggestion"])
 def update_suggestion(body: SuggestionUpdate):
     sid = body.id
