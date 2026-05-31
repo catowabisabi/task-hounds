@@ -1,10 +1,34 @@
-# Task Hounds - Work like a dog
+<p align="center">
+  <img src="docs/image/Task%20Hounds%20Logo.png" alt="Task Hounds Logo" width="170" />
+</p>
 
-Task Hounds is a local multi-agent development workspace. You give it a human directive, and it coordinates a Manager, Worker, Reviewer, and Chat agent around one project session.
+<h1 align="center">Task Hounds - Work like a dog</h1>
 
-The project is designed for people who want a visible, controllable agent loop instead of a black-box coding assistant. State is stored in SQLite, agent sessions are tracked per project, and the dashboard shows what the agents are doing in real time.
+<p align="center">
+  <strong>A local multi-agent development workspace powered by OpenCode.</strong><br/>
+  Give it a Human Directive. Watch Manager, Worker, Reviewer, and Chat agents move the project forward.
+</p>
 
-[Website](https://task-hounds.com) · [Repository](https://github.com/catowabisabi/task-hounds) · [Demo video](https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s)
+<p align="center">
+  <a href="https://task-hounds.com">Website</a> ?
+  <a href="https://github.com/catowabisabi/task-hounds">GitHub</a> ?
+  <a href="https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s">Demo Video</a>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" /></a>
+  <img src="https://img.shields.io/badge/Python-3.11+-yellow.svg" alt="Python 3.11+" />
+  <img src="https://img.shields.io/badge/React-19-61dafb.svg" alt="React 19" />
+  <img src="https://img.shields.io/badge/Electron-Desktop_App-47848f.svg" alt="Electron Desktop App" />
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ed.svg" alt="Docker Ready" />
+  <img src="https://img.shields.io/badge/OpenCode-Powered-111827.svg" alt="OpenCode Powered" />
+</p>
+
+<p align="center">
+  <img src="docs/image/banner2.png" alt="Task Hounds Banner" width="92%" />
+</p>
+
+Task Hounds is built for people who want a visible, controllable agent loop instead of a black-box coding assistant. State is stored in SQLite, agent sessions are tracked per project, and the dashboard shows what the agents are doing in real time.
 
 ## Highlights
 
@@ -18,7 +42,19 @@ The project is designed for people who want a visible, controllable agent loop i
 
 ## Demo
 
-Watch the demo: https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s">
+    <img src="https://img.youtube.com/vi/pu-Rt8Ye4EQ/maxresdefault.jpg" alt="Watch the Task Hounds demo on YouTube" width="82%" />
+  </a>
+  <br/>
+  <em>Click to watch the demo on YouTube.</em>
+</p>
+
+## Dashboard
+
+<p align="center">
+  <img src="docs/image/ui%20(2).png" alt="Task Hounds dashboard" width="86%" />
+</p>
 
 ## Quick Start
 
