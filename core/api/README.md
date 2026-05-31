@@ -1,6 +1,6 @@
-# Task Hounds API Server
+# Task Hounds FastAPI Server
 
-This directory contains the Python HTTP API server for Task Hounds.
+This directory contains the Python FastAPI server for Task Hounds.
 
 The web UI is served from `ui/web/dist/`. Build it first:
 
@@ -15,14 +15,15 @@ Start the server from the project root:
 
 ```powershell
 $env:PYTHONPATH = "core"
-python core/api/server.py --port 8765
+python -m api.fastapi_server --port 8765
 ```
 
 Then open http://localhost:8765.
 
 ## Key Paths
 
-- API server: `core/api/server.py`
+- API server: `core/api/fastapi_server.py`
+- Legacy helper module: `core/api/server.py`
 - SQLite schema: `core/db/schema.sql`
 - Runtime files: `core/runtime/`
 - Web build output: `ui/web/dist/`

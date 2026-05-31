@@ -19,6 +19,7 @@ _CORE_API_SERVER = None
 
 
 def _core_api_server():
+    """Load legacy helper module while FastAPI owns runtime serving."""
     global _CORE_API_SERVER
     if _CORE_API_SERVER is not None:
         return _CORE_API_SERVER

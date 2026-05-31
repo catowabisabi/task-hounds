@@ -5,7 +5,7 @@ import fs from "fs";
 import os from "os";
 
 const PROJECT_ROOT = "C:\\Users\\enoma\\Desktop\\opencode-work\\agent-works\\software\\power-teams";
-const CORE_API_DIR = path.join(PROJECT_ROOT, "core/api");
+const CORE_DIR = path.join(PROJECT_ROOT, "core");
 const PORT = "18765";
 
 function tempDbPath(): string {
@@ -27,15 +27,15 @@ async function seedDb(dbPath: string): Promise<void> {
 
 async function startBackend(dbPath: string): Promise<ChildProcess> {
   const env = { ...process.env, POWER_TEAMS_DB: dbPath };
-  const child = spawn("python", ["server.py", "--no-opencode", "--port", PORT], {
-    cwd: CORE_API_DIR,
+  const child = spawn("python", ["-m", "api.fastapi_server", "--port", PORT], {
+    cwd: CORE_DIR,
     env,
     stdio: "pipe",
   });
   await new Promise<void>((resolve) => {
     child.stdout?.on("data", (d) => {
       const s = d.toString();
-      if (s.includes("Serving on") || s.includes("127.0.0.1:" + PORT)) resolve();
+      if (s.includes("Starting FastAPI server") || s.includes("127.0.0.1:" + PORT)) resolve();
     });
     setTimeout(resolve, 5000);
   });

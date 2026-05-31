@@ -1,7 +1,7 @@
 """
-FastAPI replacement for the legacy http.server-based API.
+Task Hounds FastAPI server.
 
-Run standalone (does NOT replace server.py until endpoints are verified):
+Run standalone:
     python -m api.fastapi_server --port 8765
 
 Swagger UI:  http://localhost:8765/docs

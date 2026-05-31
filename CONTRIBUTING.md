@@ -29,14 +29,14 @@ cd ../..
 Run the API server:
 
 ```bash
-PYTHONPATH=core python core/api/server.py --port 8765
+PYTHONPATH=core python -m api.fastapi_server --port 8765
 ```
 
 On Windows PowerShell:
 
 ```powershell
 $env:PYTHONPATH = "core"
-python core\api\server.py --port 8765
+python -m api.fastapi_server --port 8765
 ```
 
 ## Checks
@@ -44,7 +44,7 @@ python core\api\server.py --port 8765
 Backend syntax check:
 
 ```bash
-python -m py_compile core/api/server.py core/power_teams/db.py core/power_teams/agents/base.py core/power_teams/agents/manager.py core/power_teams/agents/worker.py core/power_teams/agents/reviewer.py core/power_teams/mvp/runner.py
+python -m py_compile core/api/fastapi_server.py core/api/server.py core/power_teams/db.py core/power_teams/agents/base.py core/power_teams/agents/manager.py core/power_teams/agents/worker.py core/power_teams/agents/reviewer.py core/power_teams/mvp/runner.py
 ```
 
 Frontend build:

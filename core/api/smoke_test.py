@@ -12,8 +12,8 @@ print("=" * 60)
 
 print("\n[1/6] Starting server...")
 server_proc = subprocess.Popen(
-    [sys.executable, "server.py", "--no-opencode"],
-    cwd=str(Path(__file__).resolve().parents[1]),  # run from project root so server.py ROOT=parents[1] finds frontend/dist
+    [sys.executable, "-m", "api.fastapi_server", "--port", "8765"],
+    cwd=str(Path(__file__).resolve().parents[1]),
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
 )
@@ -55,6 +55,7 @@ def api_post(path):
 print("\n[2/6] Testing API endpoints...")
 endpoints = [
     ("/api/agents", "Agents list"),
+    ("/api/suggestions/unscoped", "Unscoped suggestions"),
     ("/api/files/user_input", "User input"),
     ("/api/files/tasks", "Tasks"),
     ("/api/files/worker_report", "Worker report"),

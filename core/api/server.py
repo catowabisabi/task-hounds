@@ -79,6 +79,12 @@ def check_api_auth(handler):
     api_key = handler.headers.get("X-API-Key", "")
     return bool(api_key and api_key == secret_key)
 
+"""Legacy http.server helpers.
+
+Task Hounds runtime entrypoints should use api.fastapi_server. This module is
+kept while shared helpers are extracted for the FastAPI app.
+"""
+
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse

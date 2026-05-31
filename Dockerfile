@@ -29,4 +29,4 @@ EXPOSE 8765
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/api/agents', timeout=3)"
 
-CMD ["python", "core/api/server.py", "--port", "8765"]
+CMD ["python", "-m", "api.fastapi_server", "--host", "0.0.0.0", "--port", "8765"]

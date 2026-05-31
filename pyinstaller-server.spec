@@ -9,7 +9,7 @@ ROOT_DIR = os.path.abspath(globals().get('SPECPATH') or os.path.dirname(__file__
 block_cipher = None
 
 a = Analysis(
-    [os.path.join(ROOT_DIR, 'core', 'api', 'server.py')],
+    [os.path.join(ROOT_DIR, 'core', 'api', 'fastapi_server.py')],
     pathex=[ROOT_DIR],
     binaries=[],
     datas=[
@@ -25,6 +25,7 @@ a = Analysis(
     hiddenimports=[
         'core',
         'core.api',
+        'core.api.fastapi_server',
         'core.api.server',
         'core.db',
         'core.db.migrations',
@@ -62,7 +63,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='power-teams-server',
+    name='task-hounds-fastapi-server',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

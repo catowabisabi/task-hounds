@@ -1,34 +1,10 @@
-<p align="center">
-  <img src="docs/image/Task%20Hounds%20Logo.png" alt="Task Hounds Logo" width="170" />
-</p>
+# Task Hounds - Work like a dog
 
-<h1 align="center">Task Hounds - Work like a dog</h1>
+Task Hounds is a local multi-agent development workspace. You give it a human directive, and it coordinates a Manager, Worker, Reviewer, and Chat agent around one project session.
 
-<p align="center">
-  <strong>A local multi-agent development workspace powered by OpenCode.</strong><br/>
-  Give it a Human Directive. Watch Manager, Worker, Reviewer, and Chat agents move the project forward.
-</p>
+The project is designed for people who want a visible, controllable agent loop instead of a black-box coding assistant. State is stored in SQLite, agent sessions are tracked per project, and the dashboard shows what the agents are doing in real time.
 
-<p align="center">
-  <a href="https://task-hounds.com">Website</a> ?
-  <a href="https://github.com/catowabisabi/task-hounds">GitHub</a> ?
-  <a href="https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s">Demo Video</a>
-</p>
-
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" /></a>
-  <img src="https://img.shields.io/badge/Python-3.11+-yellow.svg" alt="Python 3.11+" />
-  <img src="https://img.shields.io/badge/React-19-61dafb.svg" alt="React 19" />
-  <img src="https://img.shields.io/badge/Electron-Desktop_App-47848f.svg" alt="Electron Desktop App" />
-  <img src="https://img.shields.io/badge/Docker-Ready-2496ed.svg" alt="Docker Ready" />
-  <img src="https://img.shields.io/badge/OpenCode-Powered-111827.svg" alt="OpenCode Powered" />
-</p>
-
-<p align="center">
-  <img src="docs/image/banner2.png" alt="Task Hounds Banner" width="92%" />
-</p>
-
-Task Hounds is built for people who want a visible, controllable agent loop instead of a black-box coding assistant. State is stored in SQLite, agent sessions are tracked per project, and the dashboard shows what the agents are doing in real time.
+[Website](https://task-hounds.com) · [Repository](https://github.com/catowabisabi/task-hounds) · [Demo video](https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s)
 
 ## Highlights
 
@@ -42,19 +18,7 @@ Task Hounds is built for people who want a visible, controllable agent loop inst
 
 ## Demo
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s">
-    <img src="https://img.youtube.com/vi/pu-Rt8Ye4EQ/maxresdefault.jpg" alt="Watch the Task Hounds demo on YouTube" width="82%" />
-  </a>
-  <br/>
-  <em>Click to watch the demo on YouTube.</em>
-</p>
-
-## Dashboard
-
-<p align="center">
-  <img src="docs/image/ui%20(2).png" alt="Task Hounds dashboard" width="86%" />
-</p>
+Watch the demo: https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s
 
 ## Quick Start
 
@@ -106,7 +70,7 @@ POWER_TEAMS_HARD_TIMEOUT=1200
 
 ```powershell
 $env:PYTHONPATH = "core"
-python core\api\server.py --port 8765
+python -m api.fastapi_server --port 8765
 ```
 
 Open http://localhost:8765.
@@ -215,7 +179,7 @@ These are intentionally excluded from the public repo:
 Backend syntax check:
 
 ```powershell
-python -m py_compile core/api/server.py core/power_teams/db.py core/power_teams/agents/base.py core/power_teams/agents/manager.py core/power_teams/agents/worker.py core/power_teams/agents/reviewer.py core/power_teams/mvp/runner.py
+python -m py_compile core/api/fastapi_server.py core/api/server.py core/power_teams/db.py core/power_teams/agents/base.py core/power_teams/agents/manager.py core/power_teams/agents/worker.py core/power_teams/agents/reviewer.py core/power_teams/mvp/runner.py
 ```
 
 Frontend build:
