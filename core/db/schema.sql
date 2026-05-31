@@ -304,6 +304,25 @@ CREATE TABLE IF NOT EXISTS project_sessions (
     updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS project_session_role_sessions (
+    project_session_id   TEXT NOT NULL,
+    role                 TEXT NOT NULL CHECK(role IN ('manager', 'worker', 'reviewer', 'chat')),
+    opencode_session_id  TEXT,
+    server_instance_id   INTEGER,
+    workspace_path       TEXT,
+    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (project_session_id, role),
+    FOREIGN KEY (project_session_id) REFERENCES project_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (server_instance_id) REFERENCES opencode_server_instances(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_session_role_sessions_role
+    ON project_session_role_sessions(role);
+
+CREATE INDEX IF NOT EXISTS idx_project_session_role_sessions_opencode_session
+    ON project_session_role_sessions(opencode_session_id);
+
 CREATE TABLE IF NOT EXISTS session_plan (
     session_id TEXT PRIMARY KEY,
     content    TEXT NOT NULL,

@@ -37,35 +37,19 @@ def _apply_migration_script(db: sqlite3.Connection, migration_text: str):
 
 def _split_into_executable_units(text: str):
     units = []
-    current = ''
-    in_create_table = False
-
-    for line in text.split('\n'):
+    current = ""
+    for line in text.splitlines():
         stripped = line.strip()
         if stripped.startswith('--'):
             continue
-
-        if not in_create_table and stripped.startswith('CREATE'):
-            in_create_table = True
-            current = stripped + '\n'
-            if stripped.endswith(');'):
-                units.append(current.rstrip())
-                current = ''
-                in_create_table = False
+        if not stripped:
             continue
-
-        if in_create_table:
-            current += line + '\n'
-            if stripped.endswith(');'):
-                units.append(current.rstrip())
-                current = ''
-                in_create_table = False
-            continue
-
-        for stmt in stripped.split(';'):
-            s = stmt.strip()
-            if s:
-                units.append(s + ';')
+        current += line + "\n"
+        if sqlite3.complete_statement(current):
+            units.append(current.strip())
+            current = ""
+    if current.strip():
+        units.append(current.strip())
     return units
 
 
@@ -79,8 +63,8 @@ def init_db(path: Path = DB_PATH) -> None:
             for migration_file in sorted(migrations_dir.glob("*.sql")):
                 try:
                     _apply_migration_script(db, migration_file.read_text(encoding="utf-8"))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    raise RuntimeError(f"failed to apply migration {migration_file.name}: {exc}") from exc
 
         db.commit()
 
@@ -830,6 +814,13 @@ def resolve_role_opencode_session(
             (project_session_id,),
         ).fetchone()
         project = require_row_dict(project_row, f"project_session_id={project_session_id}")
+        role_row = db.execute(
+            "SELECT opencode_session_id FROM project_session_role_sessions "
+            "WHERE project_session_id=? AND role=?",
+            (project_session_id, role),
+        ).fetchone()
+        if role_row and role_row["opencode_session_id"]:
+            return role_row["opencode_session_id"]
         value = project[column] if column in project.keys() else None
         if value:
             return value
@@ -859,6 +850,26 @@ def save_role_opencode_session(
     column = _role_session_column(role)
     other_columns = _other_role_session_columns(role)
     with connect(path) as db:
+        project_row = db.execute(
+            "SELECT workspace_path FROM project_sessions WHERE id=?",
+            (project_session_id,),
+        ).fetchone()
+        project = require_row_dict(project_row, f"project_session_id={project_session_id}")
+        db.execute(
+            "UPDATE project_session_role_sessions SET opencode_session_id=NULL, updated_at=CURRENT_TIMESTAMP "
+            "WHERE project_session_id=? AND role!=? AND opencode_session_id=?",
+            (project_session_id, role, opencode_session_id),
+        )
+        db.execute(
+            """INSERT INTO project_session_role_sessions
+                 (project_session_id, role, opencode_session_id, workspace_path)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(project_session_id, role) DO UPDATE SET
+                 opencode_session_id=excluded.opencode_session_id,
+                 workspace_path=excluded.workspace_path,
+                 updated_at=CURRENT_TIMESTAMP""",
+            (project_session_id, role, opencode_session_id, project.get("workspace_path")),
+        )
         for other_column in other_columns:
             db.execute(
                 f"UPDATE project_sessions SET {other_column}=NULL "
