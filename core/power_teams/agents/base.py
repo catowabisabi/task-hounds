@@ -51,6 +51,7 @@ from power_teams.db import (
     mark_reviewer_timeout,
     seed_default_agents,
     update_agent,
+    update_project_session,
     update_reviewer_session,
     update_suggestion,
     upsert_handoff,
@@ -865,6 +866,19 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
     sessions = load_sessions()
     project_role_key = f"{project_session_id}:{agent_name}"
     existing_session = None
+
+    def _clear_stored_session() -> None:
+        sessions.pop(project_role_key, None)
+        if project_session_id != "legacy":
+            column = f"{agent_name}_session_id"
+            if column in {"manager_session_id", "worker_session_id", "reviewer_session_id", "chat_session_id"}:
+                try:
+                    update_project_session(project_session_id, **{column: None})
+                except Exception as exc:
+                    log(f"{agent_name}: failed clearing {column} for {project_session_id}: {exc}")
+        update_agent(agent_name, session_id=None)
+        save_sessions(sessions)
+
     if _reuse_opencode_sessions():
         if project_session_id != "legacy":
             existing_session = resolve_role_opencode_session(
@@ -881,6 +895,10 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
             existing_session = session_entry
         if not existing_session and project_role_key.startswith("legacy:"):
             existing_session = agent_row["session_id"]
+        if existing_session and str(agent_row.get("state") or "").lower() == "error" and agent_row.get("last_error"):
+            log(f"{agent_name}: ignoring stored OpenCode session after error state; starting fresh")
+            _clear_stored_session()
+            existing_session = None
 
     def _available_agents_map() -> dict[str, str]:
         try:
@@ -973,9 +991,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
     if existing_session and not _attached_session_exists(base_url, existing_session):
         log(f"{agent_name}: stale OpenCode session {existing_session[:16]} not found on {base_url}; starting fresh")
         append_text(stream_file, json.dumps({"t": "sys", "msg": "stale OpenCode session not found on server; starting fresh", "kind": "warn"}) + "\n")
-        sessions.pop(project_role_key, None)
-        save_sessions(sessions)
-        update_agent(agent_name, session_id=None)
+        _clear_stored_session()
         existing_session = None
 
     last_error = None
@@ -1255,9 +1271,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                                 f"=== ORIGINAL TASK ===\n{prompt}"
                             )
                         session_id = None
-                        sessions.pop(project_role_key, None)
-                        update_agent(agent_name, session_id=None)
-                        save_sessions(sessions)
+                        _clear_stored_session()
                         time.sleep(3)
                         last_error = RuntimeError(f"silence timeout #{sc}")
                         continue
@@ -1272,9 +1286,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                         resolved_model = _resolve_model(next_model_fi)
                         current_agent_fallback = next_agent_fi
                         session_id = None
-                        sessions.pop(project_role_key, None)
-                        update_agent(agent_name, session_id=None)
-                        save_sessions(sessions)
+                        _clear_stored_session()
                         log(f"{agent_name}: agent/model error — falling back to agent={resolved_agent} model={resolved_model}")
                         append_text(stream_file, json.dumps({"t": "sys", "msg": f"Falling back: agent={resolved_agent} model={resolved_model}", "kind": "warn"}) + "\n")
                         last_error = RuntimeError(f"agent error, trying fallback: {stderr_out[:200]}")
@@ -1283,9 +1295,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                         resolved_model = _resolve_model(next_model_fi)
                         current_model_fallback = next_model_fi
                         session_id = None
-                        sessions.pop(project_role_key, None)
-                        update_agent(agent_name, session_id=None)
-                        save_sessions(sessions)
+                        _clear_stored_session()
                         log(f"{agent_name}: agent error (no more agent fallbacks) — falling back to model={resolved_model}")
                         append_text(stream_file, json.dumps({"t": "sys", "msg": f"Falling back model: {resolved_model}", "kind": "warn"}) + "\n")
                         last_error = RuntimeError(f"agent error, trying model fallback: {stderr_out[:200]}")
@@ -1334,9 +1344,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                         resolved_model = _resolve_model(next_model_fi)
                         current_agent_fallback = next_agent_fi
                         session_id = None
-                        sessions.pop(project_role_key, None)
-                        update_agent(agent_name, session_id=None)
-                        save_sessions(sessions)
+                        _clear_stored_session()
                         log(f"{agent_name}: agent/model error (exit-0) — falling back to agent={resolved_agent} model={resolved_model}")
                         append_text(stream_file, json.dumps({"t": "sys", "msg": f"Falling back: agent={resolved_agent} model={resolved_model}", "kind": "warn"}) + "\n")
                         last_error = RuntimeError(f"exit-0 subagent: {_stderr_text[:200]}")
@@ -1345,9 +1353,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                         resolved_model = _resolve_model(next_model_fi)
                         current_model_fallback = next_model_fi
                         session_id = None
-                        sessions.pop(project_role_key, None)
-                        update_agent(agent_name, session_id=None)
-                        save_sessions(sessions)
+                        _clear_stored_session()
                         log(f"{agent_name}: agent error (exit-0, no agent fallbacks) — falling back to model={resolved_model}")
                         append_text(stream_file, json.dumps({"t": "sys", "msg": f"Falling back model: {resolved_model}", "kind": "warn"}) + "\n")
                         last_error = RuntimeError(f"exit-0 subagent: {_stderr_text[:200]}")
@@ -1371,9 +1377,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                         resolved_model = _resolve_model(next_model_fi)
                         current_agent_fallback = next_agent_fi
                         session_id = None
-                        sessions.pop(project_role_key, None)
-                        update_agent(agent_name, session_id=None)
-                        save_sessions(sessions)
+                        _clear_stored_session()
                         log(f"{agent_name}: agent/model error (exit-0) — falling back to agent={resolved_agent} model={resolved_model}")
                         append_text(stream_file, json.dumps({"t": "sys", "msg": f"Falling back: agent={resolved_agent} model={resolved_model}", "kind": "warn"}) + "\n")
                         last_error = RuntimeError(f"exit-0 subagent: {_stderr_text[:200]}")
@@ -1382,9 +1386,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                         resolved_model = _resolve_model(next_model_fi)
                         current_model_fallback = next_model_fi
                         session_id = None
-                        sessions.pop(project_role_key, None)
-                        update_agent(agent_name, session_id=None)
-                        save_sessions(sessions)
+                        _clear_stored_session()
                         log(f"{agent_name}: agent error (exit-0, no agent fallbacks) — falling back to model={resolved_model}")
                         append_text(stream_file, json.dumps({"t": "sys", "msg": f"Falling back model: {resolved_model}", "kind": "warn"}) + "\n")
                         last_error = RuntimeError(f"exit-0 subagent: {_stderr_text[:200]}")
@@ -1396,9 +1398,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                     append_text(stream_file, json.dumps({"t": "sys", "msg": "no OpenCode session id returned; restarting managed server", "kind": "warn"}) + "\n")
                     _restart_opencode_server(agent_name, _oc_host, _oc_port)
                     session_id = None
-                    sessions.pop(project_role_key, None)
-                    update_agent(agent_name, session_id=None)
-                    save_sessions(sessions)
+                    _clear_stored_session()
                     time.sleep(3)
                     last_error = RuntimeError("no session id from opencode")
                     continue
@@ -1406,9 +1406,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                     log(f"{agent_name}: 0 chars after {elapsed}s — retrying with fresh session")
                     append_text(stream_file, json.dumps({"t": "sys", "msg": "0-char response, retrying...", "kind": "warn"}) + "\n")
                     session_id = None
-                    sessions.pop(project_role_key, None)
-                    update_agent(agent_name, session_id=None)
-                    save_sessions(sessions)
+                    _clear_stored_session()
                     time.sleep(3)
                     last_error = RuntimeError("empty response from opencode")
                     continue
@@ -1469,9 +1467,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                 _restart_opencode_server(agent_name, _oc_host, _oc_port)
                 time.sleep(3)
                 session_id = None
-                sessions.pop(project_role_key, None)
-                update_agent(agent_name, session_id=None)
-                save_sessions(sessions)
+                _clear_stored_session()
                 last_error = exc
                 continue
 
@@ -1479,9 +1475,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                 log(f"{agent_name} attempt {attempt + 1} failed: {exc}  retrying with fresh session")
                 append_text(stream_file, json.dumps({"t": "sys", "msg": f"Retry {attempt + 1}: {str(exc)[:200]}", "kind": "warn"}) + "\n")
                 session_id = None
-                sessions.pop(project_role_key, None)
-                update_agent(agent_name, session_id=None)
-                save_sessions(sessions)
+                _clear_stored_session()
                 time.sleep(3)
             else:
                 log(f"{agent_name} all {max_retries + 1} attempts failed")
@@ -1795,3 +1789,4 @@ def apply_handoff_update(manager_response: str, updated_by: str = "manager"):
     new_ver = _upsert_handoff(updated_by=updated_by, **fields)
     log(f"Handoff updated to version {new_ver} by {updated_by}")
     return new_ver
+
