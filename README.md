@@ -40,6 +40,125 @@ Task Hounds is built for people who want a visible, controllable agent loop inst
 - Docker build for server-style deployment
 - MIT licensed
 
+## Task Hounds Workflow
+
+Task Hounds is built around a dog-pack style workflow: the human gives the pack a durable mission, the Manager keeps direction, the Worker carries one task, and the Reviewer sniffs for bugs, UX issues, dead ends, and safety risks before the next step.
+
+<section>
+  <h3>Core roles</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Role</th>
+        <th>Purpose</th>
+        <th>Primary inputs</th>
+        <th>Primary outputs</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Human</strong></td>
+        <td>Set the project mission and drop ideas without needing to stay in the loop.</td>
+        <td>Project intent, product direction, feature ideas, corrections, questions.</td>
+        <td><code>HUMAN_DIRECTIVE</code>, human thoughts/suggestions, suggested new tasks/items.</td>
+      </tr>
+      <tr>
+        <td><strong>Manager</strong></td>
+        <td>Understand all inputs, decide the next step, maintain the plan, and assign exactly one executable task.</td>
+        <td>Human directive, manager message history, todos, worker report, reviewer feedback, and handoff at loop start.</td>
+        <td><code>MANAGER_MESSAGE</code>, <code>PLAN</code>, <code>TODO_LIST</code>, <code>TODO_UPDATE_JSON</code>, worker task, verification, handoff update.</td>
+      </tr>
+      <tr>
+        <td><strong>Worker</strong></td>
+        <td>Execute one concrete task and report what actually changed.</td>
+        <td>Human directive, manager message, current todo list, and the manager's selected task context.</td>
+        <td><code>WORKER_REPORT</code>, files changed, test result, known issues.</td>
+      </tr>
+      <tr>
+        <td><strong>Reviewer</strong></td>
+        <td>Review the worker's output for QA, bugs, UI/UX problems, edge cases, stuck states, messy input, and safety/security risk.</td>
+        <td>Human directive, manager message, worker report, files changed, test result, known issues.</td>
+        <td>Reviewer feedback and suggested follow-up actions for the Manager to digest.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h3>Human input contract</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Input</th>
+        <th>Meaning</th>
+        <th>Lifecycle</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>HUMAN_DIRECTIVE</code></td>
+        <td>The durable project/session mission: for example, "build a Chinese learning app for young people" or "automate weather report generation".</td>
+        <td>Copied into each new session from the previous session in the same project. The workflow never edits or deletes it automatically. Only a human manual edit changes it.</td>
+      </tr>
+      <tr>
+        <td><code>HUMAN_NEW_THOUGHT_AND_SUGGESTION</code></td>
+        <td>Direction, questions, product taste, concerns, or ideas: for example, "is the direction wrong?", "do we need passwords?", "try more colors?".</td>
+        <td>The Manager digests it, may turn part of it into todo items, then marks it processed while keeping history.</td>
+      </tr>
+      <tr>
+        <td><code>HUMAN_SUGGESTED_NEW_TASK_OR_ITEM</code></td>
+        <td>A more explicit feature or work item: for example, "add export to PDF" or "add the dog banner back".</td>
+        <td>The Manager adds it to the plan/todo system when appropriate, then marks the suggestion processed while keeping history.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h3>Loop diagram</h3>
+  <pre><code>HUMAN_DIRECTIVE
+ MANAGER_MESSAGE history
+ HUMAN_NEW_THOUGHT_AND_SUGGESTION
+ HUMAN_SUGGESTED_NEW_TASK_OR_ITEM
+ WORKER_REPORT
+ REVIEWER_FEEDBACK
+ TODO state
+ HANDOFF at manager loop start only
+-------------------------------
+Manager INPUT_DIGEST
+Manager DECISION
+Manager MESSAGE
+PLAN
+TODO_LIST
+TODO_UPDATE_JSON
+SUGGESTION_CONTENT
+SUGGESTION_VERIFICATION
+HANDOFF_UPDATE JSON
+-------------------------------
+Worker executes one task
+Worker writes WORKER_REPORT
+Worker records files changed, test result, known issues
+-------------------------------
+Reviewer checks QA, bugs, UI/UX, possible problems,
+stuck states, messy user input, safety and security risk
+-------------------------------
+Reviewer feedback returns to Manager
+Manager decides whether to fix, continue, stop, or create the next task</code></pre>
+</section>
+
+<section>
+  <h3>Hard rules</h3>
+  <ul>
+    <li><code>HUMAN_DIRECTIVE</code> is stable project/session purpose. The agent loop does not rewrite or delete it.</li>
+    <li><code>MANAGER_MESSAGE</code> is shared guidance. It is sent back into the Manager, and is also available to the Worker and Reviewer.</li>
+    <li>The Worker does not need the handoff. The Worker should receive the directive, manager message, todo list, and current task context.</li>
+    <li>The Reviewer does not assign work directly. Reviewer feedback returns to the Manager like a structured suggestion.</li>
+    <li><code>SUGGESTION_CONTENT</code> and <code>SUGGESTION_VERIFICATION</code> are for Manager digestion and task tracking; the Worker should be guided by the Manager message and todo context.</li>
+    <li><code>TODO_UPDATE_JSON</code> is the machine-readable todo source of truth. If it is missing or invalid, Task Hounds should repair it before releasing work.</li>
+    <li>Handoff is Manager memory. It is read at the start of a Manager loop and updated as JSON, not treated as Worker context.</li>
+  </ul>
+</section>
+
 ## Demo
 
 <p align="center">
