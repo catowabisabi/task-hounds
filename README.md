@@ -43,6 +43,12 @@ Task Hounds writes the managed binary path into `core/runtime/settings.json` and
 core/runtime/opencode_runtime/node_modules/opencode-ai/bin/opencode.exe
 ```
 
+#### OpenCode configuration notes
+
+Task Hounds depends on `opencode run --attach <server> --format json` emitting JSON stream events. Do not add the Playwright MCP server to `opencode.json` or the managed `core/runtime/opencode_config/opencode.jsonc` unless you have verified streaming locally; current OpenCode builds can stop emitting attach JSON events when the Playwright MCP entry is present, which breaks live `think`, `tool`, and `step_end` streams.
+
+When adding extra models, define them in `opencode.json` using the Anthropic-style provider/model format that OpenCode expects. Models that are not declared there are not selectable or usable by Task Hounds, and OpenCode may return `409` or `500` errors when the dashboard tries to run them.
+
 Install Python dependencies:
 
 ```powershell
