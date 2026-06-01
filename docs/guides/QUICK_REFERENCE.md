@@ -154,8 +154,8 @@ SELECT status, COUNT(*) FROM suggestion_queue GROUP BY status;
 # Custom database path
 export POWER_TEAMS_DB=/path/to/custom.db
 
-# OpenCode binary location (if not in PATH)
-export OPENCODE_BIN=/usr/local/bin/opencode
+# Install the managed OpenCode runtime
+./installation.cmd
 
 # Custom ports
 python -m power_teams.cli serve-opencode --manager-port 53239 --worker-port 58993
@@ -182,11 +182,8 @@ python api/smoke_test.py
 ### OpenCode Not Found
 
 ```bash
-# Install OpenCode CLI
-npm install -g @tmcw/opencode
-
-# Or specify custom path
-export OPENCODE_BIN=/path/to/opencode
+# Install Task Hounds' pinned OpenCode runtime
+./installation.cmd
 ```
 
 ### Port Already in Use

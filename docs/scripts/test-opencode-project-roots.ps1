@@ -9,15 +9,14 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
 function Find-OpenCode {
-  $cmd = Get-Command opencode -ErrorAction SilentlyContinue
-  if ($cmd) { return $cmd.Source }
+  $name = if ($IsWindows) { "opencode.exe" } else { "opencode" }
+  $managed = Join-Path $RepoRoot "core\runtime\opencode_runtime\node_modules\opencode-ai\bin\$name"
+  if (Test-Path -LiteralPath $managed) { return $managed }
 
-  $local = Join-Path $env:USERPROFILE ".opencode\bin\opencode.exe"
-  if (Test-Path -LiteralPath $local) { return $local }
-
-  throw "opencode executable not found"
+  throw "managed OpenCode executable not found; run installation.cmd"
 }
 
 function Wait-OpenCode {
@@ -50,8 +49,9 @@ Reply with ONLY this information, no explanation:
 3. whether you can see this exact marker path: $ProjectDir
 "@
 
-  $env:XDG_CONFIG_HOME = "C:\Users\enoma\Desktop\opencode-work\agent-works\software\power-teams\core\runtime\opencode_home\.config"
-  $env:OPENCODE_CONFIG_DIR = "C:\Users\enoma\Desktop\opencode-work\agent-works\software\power-teams\core\runtime\opencode_config"
+  $env:XDG_CONFIG_HOME = Join-Path $RepoRoot "core\runtime\opencode_home\.config"
+  $env:XDG_DATA_HOME = Join-Path $RepoRoot "core\runtime\opencode_home\.local\share"
+  $env:OPENCODE_CONFIG_DIR = Join-Path $RepoRoot "core\runtime\opencode_config"
 
   $output = & $OpenCode run `
     --attach "http://127.0.0.1:$Port" `

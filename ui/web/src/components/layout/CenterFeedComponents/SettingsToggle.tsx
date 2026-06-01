@@ -146,12 +146,12 @@ export function SettingsToggle({ onRefresh }: { onRefresh: () => void }) {
                 value={opencodeBin}
                 onChange={e => setOpencodeBin(e.target.value)}
                 className="w-full mt-1 px-2 py-1 rounded text-[11px]"
-                placeholder="C:\Users\you\AppData\Roaming\npm\node_modules\opencode-ai\bin\opencode.exe"
+                placeholder="core\runtime\opencode_runtime\node_modules\opencode-ai\bin\opencode.exe"
                 style={{ background: "var(--bg-panel)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
               />
             </label>
             <p className="text-[10px] mb-2 leading-snug" style={{ color: "var(--text-dim)" }}>
-              Use the npm package binary. Do not use .opencode\bin\opencode.exe.
+              Managed by installation.cmd. Leave this as the managed runtime path.
             </p>
             <label className="flex items-start gap-2 text-[10px] mb-2" style={{ color: "var(--text-secondary)" }}>
               <input

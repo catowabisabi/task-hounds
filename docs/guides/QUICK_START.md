@@ -7,22 +7,19 @@ This guide starts Task Hounds locally for development.
 - Python 3.11+
 - Node.js 20+
 - npm
-- OpenCode CLI installed globally through npm and on `PATH`
+- Task Hounds managed OpenCode runtime
 
-Install or update OpenCode with npm:
+Install the pinned OpenCode runtime and plugins:
 
 ```powershell
-npm install -g opencode-ai
-where opencode
+.\installation.cmd
 ```
 
-On Windows, configure Task Hounds to use the npm package binary:
+Task Hounds stores the managed binary path in `core/runtime/settings.json` and does not use external OpenCode binary overrides.
 
 ```text
-C:\Users\<you>\AppData\Roaming\npm\node_modules\opencode-ai\bin\opencode.exe
+core/runtime/opencode_runtime/node_modules/opencode-ai/bin/opencode.exe
 ```
-
-`C:\Users\<you>\AppData\Roaming\npm\opencode.cmd` is acceptable as a fallback. Do not configure Task Hounds to use `C:\Users\<you>\.opencode\bin\opencode.exe`, because that standalone binary can use a different OpenCode runtime/session store.
 
 ## Install
 

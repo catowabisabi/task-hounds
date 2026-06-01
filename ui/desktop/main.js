@@ -64,51 +64,31 @@ function resolvePythonCmd() {
   return fallback;
 }
 
-function opencodeSearchDirs() {
-  const dirs = [];
-  if (process.env.USERPROFILE) {
-    dirs.push(path.join(process.env.USERPROFILE, '.opencode', 'bin'));
-  }
-  if (process.env.APPDATA) {
-    dirs.push(path.join(process.env.APPDATA, 'npm'));
-  }
-  return dirs.filter(Boolean);
+function augmentedEnv(extra = {}) {
+  return Object.assign({}, process.env, extra);
 }
 
-function augmentedEnv(extra = {}) {
-  const env = Object.assign({}, process.env, extra);
-  const pathKey = Object.prototype.hasOwnProperty.call(env, 'Path') ? 'Path' : 'PATH';
-  const currentPath = env[pathKey] || '';
-  const additions = opencodeSearchDirs().filter(dir => fs.existsSync(dir));
-  env[pathKey] = [currentPath, ...additions].filter(Boolean).join(path.delimiter);
-  return env;
+function managedOpenCodeBin() {
+  return path.join(
+    APP_ROOT,
+    'core',
+    'runtime',
+    'opencode_runtime',
+    'node_modules',
+    'opencode-ai',
+    'bin',
+    process.platform === 'win32' ? 'opencode.exe' : 'opencode'
+  );
 }
 
 function hasOpenCodeCommand() {
-  const env = augmentedEnv();
-  for (const dir of opencodeSearchDirs()) {
-    for (const name of ['opencode.exe', 'opencode.cmd', 'opencode.ps1']) {
-      if (fs.existsSync(path.join(dir, name))) {
-        return true;
-      }
-    }
-  }
-  try {
-    if (process.platform === 'win32') {
-      execFileSync('cmd', ['/c', 'where', 'opencode'], { env, stdio: 'ignore', timeout: 3000, windowsHide: true });
-    } else {
-      execFileSync('sh', ['-lc', 'command -v opencode'], { env, stdio: 'ignore', timeout: 3000 });
-    }
-    return true;
-  } catch (_) {
-    return false;
-  }
+  return fs.existsSync(managedOpenCodeBin());
 }
 
 function showOpenCodeInstallDialog() {
   dialog.showErrorBox(
-    'OpenCode is not installed',
-    'Task Hounds needs the OpenCode CLI before it can start agents.\n\nPlease install OpenCode globally, then restart Task Hounds:\n\nnpm install -g opencode-ai\n\nIf OpenCode is already installed, make sure one of these folders is in PATH:\n\n%USERPROFILE%\\.opencode\\bin\n%APPDATA%\\npm\n\nAfter installation, run this to confirm:\n\nopencode --version'
+    'Managed OpenCode is not installed',
+    `Task Hounds needs its managed OpenCode runtime before it can start agents.\n\nRun installation.cmd from the Task Hounds root, then restart Task Hounds.\n\nExpected binary:\n\n${managedOpenCodeBin()}`
   );
 }
 

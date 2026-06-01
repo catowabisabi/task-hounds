@@ -29,22 +29,19 @@ You need:
 - Python 3.11 or 3.12
 - Node.js 20+
 - npm
-- OpenCode CLI installed globally through npm and available on `PATH`
+- Task Hounds managed OpenCode runtime
 
-Install or update OpenCode with npm:
+Install the pinned OpenCode runtime and plugins:
 
 ```powershell
-npm install -g opencode-ai
-where opencode
+.\installation.cmd
 ```
 
-On Windows, Task Hounds should use the npm package binary, for example:
+Task Hounds writes the managed binary path into `core/runtime/settings.json` and does not use external OpenCode binary overrides.
 
 ```text
-C:\Users\<you>\AppData\Roaming\npm\node_modules\opencode-ai\bin\opencode.exe
+core/runtime/opencode_runtime/node_modules/opencode-ai/bin/opencode.exe
 ```
-
-`C:\Users\<you>\AppData\Roaming\npm\opencode.cmd` is acceptable as a fallback, but the package binary above is preferred. Do not point Task Hounds at `C:\Users\<you>\.opencode\bin\opencode.exe`; that standalone binary can use a different runtime/session store and cause `opencode run --attach --session ...` to hang or report missing sessions.
 
 Install Python dependencies:
 
