@@ -3,8 +3,8 @@ import { apiGet, apiPut, apiPost, apiPatch, apiDelete } from "../../lib/api";
 import { PlanEditor, usePlanEditor } from "./PlanningTodoRailComponents";
 import { TodoList, useTodoList, type Todo } from "./PlanningTodoRailComponents";
 
-export function PlanningTodoRail({ clearKey = 0 }: { clearKey?: number }) {
-  const { plan, planDraft, setPlanDraft, planSaving, planGlowKey, loadPlan } = usePlanEditor(clearKey);
+export function PlanningTodoRail({ clearKey = 0, apiPrefix = "/api" }: { clearKey?: number; apiPrefix?: string }) {
+  const { plan, planDraft, setPlanDraft, planSaving, planGlowKey, loadPlan } = usePlanEditor(clearKey, apiPrefix);
   const {
     todos,
     newTopDraft,
@@ -17,7 +17,7 @@ export function PlanningTodoRail({ clearKey = 0 }: { clearKey?: number }) {
     toggleStatus,
     removeTodo,
     loadTodos,
-  } = useTodoList(clearKey);
+  } = useTodoList(clearKey, apiPrefix);
 
   const loadAll = useCallback(async () => {
     await Promise.all([loadPlan(), loadTodos()]);

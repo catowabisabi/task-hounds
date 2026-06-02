@@ -16,8 +16,10 @@ import re
 import socket
 import subprocess
 import sys
+import threading
 import time
 import uuid
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -27,17 +29,48 @@ from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _load_env_files() -> None:
+    """Load repo .env files without overriding explicit process env vars."""
+    env_paths = [ROOT / ".env", ROOT / "config" / ".env"]
+    try:
+        from dotenv import load_dotenv
+
+        for env_path in env_paths:
+            if env_path.exists():
+                load_dotenv(env_path, override=False, encoding="utf-8-sig")
+        return
+    except Exception:
+        pass
+
+    for env_path in env_paths:
+        if not env_path.exists():
+            continue
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+_load_env_files()
+
 RUNTIME_DIR = Path(os.environ.get("POWER_TEAMS_RUNTIME_DIR", str(ROOT / "core" / "runtime")))
 RUNTIME_FILES = RUNTIME_DIR / "agent_files"
 DB_PATH = Path(os.environ.get("POWER_TEAMS_DB", str(ROOT / "core" / "db" / "power_teams.db")))
 WEB_DIST = ROOT / "ui" / "web" / "dist"
 
 UTC = timezone.utc
-PYTHONPATH_ENTRIES = [str(ROOT / "core"), str(ROOT / "backend")]
+PYTHONPATH_ENTRIES = [*(os.environ.get("PYTHONPATH", "").split(os.pathsep) if os.environ.get("PYTHONPATH") else []), str(ROOT / "core"), str(ROOT / "backend")]
 for _entry in reversed(PYTHONPATH_ENTRIES):
     if _entry not in sys.path:
         sys.path.insert(0, _entry)
@@ -45,27 +78,49 @@ for _entry in reversed(PYTHONPATH_ENTRIES):
 RUN_LOG = RUNTIME_DIR / "logs" / "desktop-run-cycle.log"
 DEFAULT_STREAM_AGENTS = ("manager", "worker", "reviewer", "chat")
 
-# ── Imports from server.py ────────────────────────────────────────────────────
-from api.server import (
-    get_db_agents,
-    read_settings, write_settings,
-    read_active_runtime_file, read_runtime, write_runtime,
-    active_runtime_file, active_agent_stream_path, agent_stream_path, agent_timer_path,
-    get_active_project_session_id,
-    get_chat_runtime_status, get_chat_messages_data, render_chat_stream_from_history,
-    get_handoff_data, get_handoff_versions, get_suggestion_data, get_manager_messages_data,
-    update_agent_state,
-    utc_now, debug_log,
-    model_options, fetch_json, resolve_opencode_agent,
-    repair_mojibake, extract_reasoning, split_answer_and_thinking, extract_tools,
-    sse_event, is_opencode_http_reachable,
-    _opencode_enabled,
-    start_mvp_loop, stop_mvp_loop, run_mvp_cycle, stop_mvp_cycle,
-    loop_status, ensure_opencode_servers,
-    DEFAULT_STREAM_AGENTS as _DEFAULT_STREAM_AGENTS,
-    RUN_LOG as _RUN_LOG,
-    _db,
-)
+# ── Legacy service facades ────────────────────────────────────────────────────
+from api.services.legacy import services as _api_services
+
+get_db_agents = _api_services.agents.list
+read_settings = _api_services.settings.read
+write_settings = _api_services.settings.write
+read_active_runtime_file = _api_services.runtime_files.read_active
+read_runtime = _api_services.runtime_files.read
+write_runtime = _api_services.runtime_files.write
+active_runtime_file = _api_services.runtime_files.active_file
+active_agent_stream_path = _api_services.streams.active_path
+agent_stream_path = _api_services.streams.legacy_path
+agent_timer_path = _api_services.streams.timer_path
+get_active_project_session_id = _api_services.settings.active_project_session_id
+get_chat_runtime_status = _api_services.chat.runtime_status
+get_chat_messages_data = _api_services.chat.messages
+render_chat_stream_from_history = _api_services.streams.render_chat_from_history
+get_handoff_data = _api_services.handoff.current
+get_handoff_versions_data = _api_services.handoff.versions
+get_suggestion_data = _api_services.suggestions.current
+get_manager_messages_data = _api_services.manager_messages.list
+update_agent_state = _api_services.agents.update_state
+utc_now = _api_services.utils.utc_now
+debug_log = _api_services.utils.debug_log
+model_options = _api_services.opencode.model_options
+fetch_json = _api_services.opencode.fetch_json
+resolve_opencode_agent = _api_services.opencode.resolve_agent
+repair_mojibake = _api_services.text.repair_mojibake
+extract_reasoning = _api_services.text.extract_reasoning
+split_answer_and_thinking = _api_services.text.split_answer_and_thinking
+extract_tools = _api_services.text.extract_tools
+sse_event = _api_services.utils.sse_event
+is_opencode_http_reachable = _api_services.opencode.is_http_reachable
+_opencode_enabled = _api_services.opencode.enabled
+start_mvp_loop = _api_services.loop.start
+stop_mvp_loop = _api_services.loop.stop
+run_mvp_cycle = _api_services.loop.run_cycle
+stop_mvp_cycle = _api_services.loop.stop_cycle
+loop_status = _api_services.loop.status
+ensure_opencode_servers = _api_services.opencode.ensure_servers
+_DEFAULT_STREAM_AGENTS = _api_services.streams.default_agents
+_RUN_LOG = _api_services.loop.run_log
+_db = _api_services.db.module
 
 RUNTIME_FILES.mkdir(parents=True, exist_ok=True)
 _RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
@@ -86,6 +141,7 @@ def ensure_runtime_ready(*, restart_managed: bool = False) -> None:
         from power_teams.runtime.opencode_lifecycle import OpenCodeLifecycleManager, cleanup_orphan_opencode_servers
         from power_teams.runtime.opencode_supervisor import find_free_port
         mgr = OpenCodeLifecycleManager(db_path=DB_PATH)
+        cleanup_result = None
         if restart_managed:
             cleanup_result = cleanup_orphan_opencode_servers(db_path=DB_PATH)
             _append_text(_RUN_LOG, f"[{utc_now()}] fastapi orphan cleanup: {cleanup_result}\n")
@@ -96,6 +152,7 @@ def ensure_runtime_ready(*, restart_managed: bool = False) -> None:
                 result = mgr.reconcile_runtime(start_if_missing=False, restart_unowned=False)
             else:
                 result = {**result, "started": started}
+                raise RuntimeError(started["error"])
         _append_text(_RUN_LOG, f"[{utc_now()}] fastapi runtime reconcile: {result}\n")
     except Exception as exc:
         _append_text(_RUN_LOG, f"[{utc_now()}] fastapi runtime reconcile failed: {exc}\n")
@@ -183,6 +240,9 @@ class Agent(BaseModel):
     opencode_agent: str
     state: str
     task_complete: int = 0
+    current_step: str | None = None
+    current_step_started_at: str | None = None
+    last_stream_at: str | None = None
     last_seen: str | None = None
     last_error: str | None = None
     session_id: str | None = None
@@ -415,6 +475,43 @@ class BackendList(BaseModel):
 
 class PortCheckResult(BaseModel):
     reachable: dict[str, bool]
+
+
+# -- Workflows --
+class FlowRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    loops: int = Field(default=1, ge=1, le=5)
+    directive: str | None = None
+    directive_file: str | None = None
+    suggested_task: str | None = None
+    thought: str | None = None
+    manager_message: str | None = None
+    workspace_path: str | None = None
+    emit_real_ui_signals: bool = True
+    use_real_worker: bool = True
+
+
+class FlowDirectiveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    directive: str
+    workspace_path: str | None = None
+    directive_file: str | None = None
+
+
+class FlowPrepareRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workspace_path: str | None = None
+    directive: str | None = None
+
+
+class FlowCancelRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str = "user_requested"
+    stop_worker: bool = True
 
 
 # -- Debug --
@@ -866,6 +963,8 @@ def get_suggestion():
 @app.get("/api/suggestions/unscoped", response_model=list[Suggestion], tags=["suggestion"])
 def get_unscoped_suggestions():
     try:
+        if get_active_project_session_id() != "legacy":
+            return []
         rows = _db().list_unscoped_active_suggestions(path=DB_PATH)
         data = []
         for row in rows:
@@ -1248,14 +1347,24 @@ def get_handoff():
 
 @app.get("/api/handoff/versions", tags=["handoff"])
 def get_handoff_versions():
-    return get_handoff_versions()
+    return get_handoff_versions_data()
 
 
 @app.put("/api/handoff", tags=["handoff"])
 def update_handoff(body: HandoffUpdate):
     try:
-        version = _db().upsert_handoff(updated_by="human", path=DB_PATH, **body.model_dump(exclude_none=True))
+        session_id = get_active_project_session_id()
+        if session_id == "legacy":
+            raise HTTPException(status_code=409, detail="handoff update requires an active project session")
+        version = _db().upsert_handoff(
+            updated_by="human",
+            path=DB_PATH,
+            session_id=session_id,
+            **body.model_dump(exclude_none=True),
+        )
         return {"ok": True, "version": version}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -2097,6 +2206,1088 @@ async def port_checks(request: Request):
             return {"ok": True, "is_running": 1, "output": f"{host}:{port} is running"}
     except OSError as exc:
         return {"ok": True, "is_running": 0, "output": f"{host}:{port} is not reachable ({exc})"}
+
+
+FLOW_01_TABLES = (
+    "project_sessions",
+    "project_session_role_sessions",
+    "workflow_runs",
+    "user_directives",
+    "manager_messages",
+    "session_plan",
+    "session_todos",
+    "suggestion_queue",
+    "worker_reports",
+    "reviewer_sessions",
+    "project_handoff",
+)
+
+
+def _flow_01_default_workspace() -> Path:
+    return Path.home() / "Desktop" / "test" / "05"
+
+
+def _flow_01_workspace_path(raw_path: str | None = None) -> Path:
+    if raw_path and raw_path.strip():
+        return Path(raw_path).expanduser()
+    return _flow_01_default_workspace()
+
+
+def _flow_01_directive_file(workspace_path: str | None = None, directive_file: str | None = None) -> Path:
+    if directive_file and directive_file.strip():
+        return Path(directive_file).expanduser()
+    return _flow_01_workspace_path(workspace_path) / "human_directive.txt"
+
+
+def _flow_01_default_directive() -> str:
+    return (
+        "Create a minimal observable flow_01 test artifact in this workspace. "
+        "Start from the manager-selected task, keep the change small, and report "
+        "the exact files changed and verification result."
+    )
+
+
+def _flow_01_read_directive(workspace_path: str | None = None, directive_file: str | None = None) -> str:
+    path = _flow_01_directive_file(workspace_path, directive_file)
+    if path.exists():
+        return path.read_text(encoding="utf-8").strip()
+    return ""
+
+
+def _flow_01_write_directive(
+    directive: str | None = None,
+    workspace_path: str | None = None,
+    directive_file: str | None = None,
+) -> dict:
+    path = _flow_01_directive_file(workspace_path, directive_file)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    content = (directive or _flow_01_default_directive()).strip()
+    path.write_text(content + "\n", encoding="utf-8")
+    return {
+        "workspace_path": str(path.parent),
+        "directive_file": str(path),
+        "directive": content,
+        "directive_chars": len(content),
+    }
+
+
+def _flow_01_insert_db_directive(directive: str, workspace_path: str | None = None) -> dict:
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+    from power_teams.agentic_workflows.flow_01.interface import utc_now
+
+    settings = read_settings()
+    session_id = get_active_project_session_id()
+    power_team_project_id = str(settings.get("active_workspace_id") or settings.get("workspace_id") or "power-teams")
+    storage = FlowStorage()
+    storage.init_db()
+    now = utc_now()
+    with sqlite3.connect(storage.db_path) as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO user_directives
+              (power_team_project_id, session_id, directive, status, created_at, updated_at)
+            VALUES (?, ?, ?, 'pending', ?, ?)
+            """,
+            (power_team_project_id, session_id, directive, now, now),
+        )
+        directive_id = int(cursor.lastrowid)
+        conn.commit()
+    return {
+        "directive_id": directive_id,
+        "fake_db": str(storage.db_path),
+        "power_team_project_id": power_team_project_id,
+        "session_id": session_id,
+        "workspace_path": str(_flow_01_workspace_path(workspace_path)),
+        "status": "pending",
+    }
+
+
+def _flow_01_counts() -> dict[str, int]:
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    return {table: storage.count(table) for table in FLOW_01_TABLES}
+
+
+def _flow_01_run_summary(row: Any) -> dict:
+    output = json.loads(row["output_json"] or "{}")
+    flow_input = json.loads(row["input_json"] or "{}")
+    worker_payload = output.get("worker", {}).get("payload", {}) if isinstance(output.get("worker"), dict) else {}
+    return {
+        "id": row["id"],
+        "power_team_project_id": row["power_team_project_id"],
+        "project_session_id": row["project_session_id"],
+        "loop_index": row["loop_index"],
+        "status": row["status"],
+        "created_at": row["created_at"],
+        "workspace_path": flow_input.get("workspace_path", ""),
+        "phase": output.get("phase", ""),
+        "task": (output.get("suggestion") or {}).get("content", "") if isinstance(output.get("suggestion"), dict) else output.get("task", ""),
+        "test_result": worker_payload.get("test_result", ""),
+        "known_issues": worker_payload.get("known_issues", output.get("known_issues", [])),
+        "files_changed": worker_payload.get("files_changed", []),
+        "error": output.get("error"),
+    }
+
+
+def _flow_01_create_start_loop_run(flow_input: Any, *, use_real_worker: bool, emit_real_ui_signals: bool) -> dict:
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+    from power_teams.agentic_workflows.flow_01.interface import utc_now
+
+    storage = FlowStorage()
+    storage.init_db()
+    now = utc_now()
+    identity = flow_input.identity()
+    output_json = {
+        "status": "running",
+        "phase": "manager_running",
+        "task": "",
+        "todo_update_json": {"items": []},
+        "use_real_worker": use_real_worker,
+        "emit_real_ui_signals": emit_real_ui_signals,
+    }
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO project_sessions
+              (id, power_team_project_id, workspace_id, name,
+               manager_session_id, worker_session_id, reviewer_session_id, chat_session_id,
+               is_active, workspace_path, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+            """,
+            (
+                identity.project_session_id,
+                identity.power_team_project_id,
+                identity.workspace_id,
+                f"Flow 01 {identity.project_session_id}",
+                identity.manager_opencode_session_id,
+                identity.worker_opencode_session_id,
+                identity.reviewer_opencode_session_id,
+                identity.chat_opencode_session_id,
+                identity.workspace_path,
+                now,
+                now,
+            ),
+        )
+        for role, opencode_session_id in (
+            ("manager", identity.manager_opencode_session_id),
+            ("worker", identity.worker_opencode_session_id),
+            ("reviewer", identity.reviewer_opencode_session_id),
+            ("chat", identity.chat_opencode_session_id),
+        ):
+            conn.execute(
+                """
+                INSERT INTO project_session_role_sessions
+                  (project_session_id, power_team_project_id, role, opencode_session_id,
+                   server_instance_id, workspace_path, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(project_session_id, role) DO UPDATE SET
+                  power_team_project_id=excluded.power_team_project_id,
+                  opencode_session_id=excluded.opencode_session_id,
+                  server_instance_id=excluded.server_instance_id,
+                  workspace_path=excluded.workspace_path,
+                  updated_at=excluded.updated_at
+                """,
+                (
+                    identity.project_session_id,
+                    identity.power_team_project_id,
+                    role,
+                    opencode_session_id,
+                    identity.server_instance_id,
+                    identity.workspace_path,
+                    now,
+                    now,
+                ),
+            )
+        cursor = conn.execute(
+            """
+            INSERT INTO workflow_runs
+              (power_team_project_id, project_session_id, loop_index, status,
+               manager_opencode_session_id, worker_opencode_session_id,
+               reviewer_opencode_session_id, server_instance_id,
+               input_json, output_json, created_at)
+            VALUES (?, ?, 1, 'running', ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                identity.power_team_project_id,
+                identity.project_session_id,
+                identity.manager_opencode_session_id,
+                identity.worker_opencode_session_id,
+                identity.reviewer_opencode_session_id,
+                identity.server_instance_id,
+                json.dumps(asdict(flow_input), ensure_ascii=False),
+                json.dumps(output_json, ensure_ascii=False),
+                now,
+            ),
+        )
+        run_id = int(cursor.lastrowid)
+        conn.commit()
+    return {
+        "run_id": run_id,
+        "status": "running",
+        "phase": "manager_running",
+        "task": "",
+        "todos": [],
+        "fake_db": str(storage.db_path),
+    }
+
+
+def _flow_01_mark_run(run_id: int, *, status: str, output_json: dict) -> None:
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.execute(
+            "UPDATE workflow_runs SET status=?, output_json=? WHERE id=?",
+            (status, json.dumps(output_json, ensure_ascii=False), run_id),
+        )
+        conn.commit()
+
+
+def _flow_01_run_row(run_id: int) -> Any | None:
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        return conn.execute("SELECT * FROM workflow_runs WHERE id=?", (run_id,)).fetchone()
+
+
+def _flow_01_run_is_cancelling(run_id: int) -> bool:
+    row = _flow_01_run_row(run_id)
+    return bool(row and row["status"] in {"cancelling", "cancelled"})
+
+
+def _flow_01_merge_run_output(run_id: int, *, status: str | None = None, updates: dict | None = None) -> dict:
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    updates = updates or {}
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM workflow_runs WHERE id=?", (run_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="flow_01 run not found")
+        output_json = json.loads(row["output_json"] or "{}")
+        output_json.update(updates)
+        next_status = status or row["status"]
+        conn.execute(
+            "UPDATE workflow_runs SET status=?, output_json=? WHERE id=?",
+            (next_status, json.dumps(output_json, ensure_ascii=False), run_id),
+        )
+        conn.commit()
+    return output_json
+
+
+def _flow_01_write_manager_state(run_id: int, flow_input: Any, state: Any) -> None:
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+    from power_teams.agentic_workflows.flow_01.interface import utc_now
+
+    storage = FlowStorage()
+    storage.init_db()
+    now = utc_now()
+    identity = flow_input.identity()
+    manager_message = (
+        f"Loop {state.loop_input.loop_index}: I digested the directive, manager message, "
+        f"todo list, worker report, and reviewer feedback. Next task: {state.suggestion_content}"
+    )
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO manager_messages
+              (power_team_project_id, content, session_id, queue_status, status_label, created_at)
+            VALUES (?, ?, ?, 'manager_response', 'Manager response', ?)
+            """,
+            (identity.power_team_project_id, manager_message, identity.project_session_id, now),
+        )
+        conn.execute(
+            """
+            INSERT INTO session_plan (session_id, power_team_project_id, content, updated_by, updated_at)
+            VALUES (?, ?, ?, 'manager', ?)
+            ON CONFLICT(session_id) DO UPDATE SET
+              power_team_project_id=excluded.power_team_project_id,
+              content=excluded.content,
+              updated_by=excluded.updated_by,
+              updated_at=excluded.updated_at
+            """,
+            (identity.project_session_id, identity.power_team_project_id, state.plan, now),
+        )
+        for item in state.todo_list:
+            conn.execute(
+                """
+                INSERT INTO session_todos
+                  (id, power_team_project_id, session_id, parent_id, content, status, priority, position, owner, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                  content=excluded.content,
+                  status=excluded.status,
+                  priority=excluded.priority,
+                  position=excluded.position,
+                  owner=excluded.owner,
+                  updated_at=excluded.updated_at
+                """,
+                (
+                    item["id"],
+                    identity.power_team_project_id,
+                    item["session_id"],
+                    item.get("parent_id"),
+                    item["content"],
+                    item.get("status", "pending"),
+                    item.get("priority", "medium"),
+                    item.get("position", 0),
+                    item.get("owner", "manager"),
+                    now,
+                    now,
+                ),
+            )
+        conn.execute(
+            """
+            INSERT INTO suggestion_queue
+              (power_team_project_id, content, status, verification, related_files, session_id, created_at, updated_at, released_at)
+            VALUES (?, ?, 'released', ?, '[]', ?, ?, ?, ?)
+            """,
+            (
+                identity.power_team_project_id,
+                state.suggestion_content,
+                state.suggestion_verification,
+                identity.project_session_id,
+                now,
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+    _flow_01_merge_run_output(
+        run_id,
+        updates={
+            "phase": "manager_completed",
+            "task": state.suggestion_content,
+            "todo_update_json": state.todo_update_json,
+            "manager": {
+                "input_digest": state.input_digest,
+                "decision": state.decision,
+                "plan": state.plan,
+                "handoff_update": state.handoff_update,
+            },
+        },
+    )
+
+
+def _flow_01_finish_run_from_output(run_id: int, storage: Any, flow_input: Any, output: Any, *, phase: str) -> None:
+    import sqlite3
+
+    storage.write_output(flow_input, output)
+    output_json = asdict(output)
+    output_json["phase"] = phase
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        duplicate = conn.execute(
+            """
+            SELECT id FROM workflow_runs
+             WHERE project_session_id=? AND id>?
+             ORDER BY id DESC
+             LIMIT 1
+            """,
+            (flow_input.project_session_id, run_id),
+        ).fetchone()
+        conn.execute(
+            "UPDATE workflow_runs SET status=?, output_json=? WHERE id=?",
+            (output.status, json.dumps(output_json, ensure_ascii=False), run_id),
+        )
+        if duplicate:
+            conn.execute("DELETE FROM workflow_runs WHERE id=?", (int(duplicate["id"]),))
+        conn.commit()
+
+
+class _Flow01CancellationToken:
+    def __init__(self, run_id: int) -> None:
+        self.run_id = run_id
+
+    def cancelled(self) -> bool:
+        return _flow_01_run_is_cancelling(self.run_id)
+
+
+def _flow_01_background_run(run_id: int, flow_input: Any, body: FlowRunRequest) -> None:
+    from power_teams.agentic_workflows.flow_01 import (
+        Flow01Workflow,
+        FlowLoopInput,
+        FlowState,
+        FlowStorage,
+        LocalFileWorkerExecutor,
+        LocalManagerExecutor,
+        LocalReviewerExecutor,
+        OpenCodeManagerExecutor,
+        OpenCodeReviewerExecutor,
+        OpenCodeWorkerExecutor,
+    )
+    from power_teams.agentic_workflows.flow_01.adapters import FastApiServiceSignalAdapter, RecordingSignalAdapter
+
+    storage = FlowStorage()
+    adapter = FastApiServiceSignalAdapter() if body.emit_real_ui_signals else RecordingSignalAdapter()
+    manager_executor = OpenCodeManagerExecutor() if body.use_real_worker else LocalManagerExecutor()
+    worker_executor = OpenCodeWorkerExecutor() if body.use_real_worker else LocalFileWorkerExecutor()
+    reviewer_executor = OpenCodeReviewerExecutor() if body.use_real_worker else LocalReviewerExecutor()
+    workflow = Flow01Workflow(
+        storage=storage,
+        signal_adapter=adapter,
+        workdir=Path(flow_input.workspace_path),
+        manager_executor=manager_executor,
+        worker_executor=worker_executor,
+        reviewer_executor=reviewer_executor,
+    )
+    try:
+        cancel_token = _Flow01CancellationToken(run_id)
+        loop_input = FlowLoopInput(loop_index=1)
+        adapter.loop_started(flow_input, loop_input.loop_index)
+        state = FlowState(flow_input=flow_input, loop_input=loop_input, status="running")
+        _flow_01_merge_run_output(run_id, updates={"phase": "manager_running"})
+        state = workflow.manager_step(state, cancel_token=cancel_token)
+        _flow_01_write_manager_state(run_id, flow_input, state)
+        manager_output = workflow.to_output(state)
+        adapter.manager_completed(manager_output)
+
+        if _flow_01_run_is_cancelling(run_id):
+            state.status = "cancelled"
+            state.loop_input.worker_report = "Cancelled before Worker started."
+            state.loop_input.test_result = "cancelled"
+            state.loop_input.known_issues = ["Cancelled by user before Worker started."]
+            state.loop_input.reviewer_feedback = "Cancelled before Reviewer started."
+            output = workflow.to_output(state)
+            _flow_01_finish_run_from_output(run_id, storage, flow_input, output, phase="cancelled_before_worker")
+            adapter.loop_completed(output)
+            return
+
+        _flow_01_merge_run_output(run_id, updates={"phase": "worker_running"})
+        state = workflow.worker_step(state, cancel_token=cancel_token)
+        worker_output = workflow.to_output(state)
+        adapter.worker_completed(worker_output)
+
+        if _flow_01_run_is_cancelling(run_id):
+            state.status = "cancelled"
+            state.loop_input.test_result = state.loop_input.test_result or "cancelled"
+            state.loop_input.known_issues = list(state.loop_input.known_issues or []) + ["Cancelled by user after Worker returned."]
+            state.loop_input.reviewer_feedback = "Cancelled before Reviewer. Worker output was recorded."
+            output = workflow.to_output(state)
+            _flow_01_finish_run_from_output(run_id, storage, flow_input, output, phase="cancelled_after_worker")
+            adapter.loop_completed(output)
+            return
+
+        _flow_01_merge_run_output(run_id, updates={"phase": "reviewer_running"})
+        state = workflow.reviewer_step(state, cancel_token=cancel_token)
+        output = workflow.to_output(state)
+        _flow_01_finish_run_from_output(run_id, storage, flow_input, output, phase="completed")
+        adapter.reviewer_completed(output)
+        adapter.loop_completed(output)
+    except Exception as exc:
+        if _flow_01_run_is_cancelling(run_id):
+            _flow_01_merge_run_output(
+                run_id,
+                status="cancelled",
+                updates={
+                    "status": "cancelled",
+                    "phase": "cancelled_during_worker",
+                    "error": str(exc),
+                },
+            )
+            return
+        _flow_01_mark_run(
+            run_id,
+            status="failed",
+            output_json={
+                "status": "failed",
+                "phase": "failed",
+                "error": str(exc),
+                "input": asdict(flow_input),
+            },
+        )
+
+
+def _flow_01_input_from_current_ui(body: FlowRunRequest):
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowInput
+
+    session_id = get_active_project_session_id()
+    settings = read_settings()
+    workspace_path = _flow_01_workspace_path(body.workspace_path)
+    directive = (
+        body.directive
+        or _flow_01_read_directive(str(workspace_path), body.directive_file)
+        or read_active_runtime_file("user_input.txt")
+        or ""
+    ).strip()
+    if not directive:
+        directive = _flow_01_default_directive()
+
+    todo_items: list[str] = []
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT content FROM session_todos
+             WHERE session_id=? AND parent_id IS NULL
+             ORDER BY position
+             LIMIT 10
+            """,
+            (session_id,),
+        ).fetchall()
+        todo_items = [str(row["content"]) for row in rows if str(row["content"]).strip()]
+
+    if not todo_items:
+        todo_items = [body.suggested_task or "Run a visible flow_01 UI signal test"]
+
+    return FlowInput(
+        power_team_project_id=str(settings.get("active_workspace_id") or settings.get("workspace_id") or "power-teams"),
+        project_session_id=session_id,
+        workspace_id=str(settings.get("active_workspace_id") or settings.get("workspace_id") or "workflow-ui"),
+        workspace_path=str(workspace_path),
+        manager_opencode_session_id=str(settings.get("manager_session_id") or "flow_01_manager_ui"),
+        worker_opencode_session_id=str(settings.get("worker_session_id") or "flow_01_worker_ui"),
+        reviewer_opencode_session_id=str(settings.get("reviewer_session_id") or "flow_01_reviewer_ui"),
+        chat_opencode_session_id=str(settings.get("chat_session_id") or "flow_01_chat_ui"),
+        server_instance_id=None,
+        human_directive=directive,
+        human_new_thought_and_suggestion=body.thought or "Triggered from FastAPI for real UI signal verification.",
+        human_suggested_new_task_or_item=body.suggested_task or todo_items[0],
+        manager_message=body.manager_message or "Flow 01 is emitting real dashboard signals while keeping workflow DB writes in its fake DB.",
+        todo_items=todo_items,
+    )
+
+
+@app.get("/api/workflows/flow_01/status", tags=["workflows"])
+def flow_01_status():
+    from power_teams.agentic_workflows.flow_01 import DB_PATH as FLOW_01_DB_PATH
+
+    directive_path = _flow_01_directive_file()
+    directive = directive_path.read_text(encoding="utf-8") if directive_path.exists() else ""
+    settings = read_settings()
+    return {
+        "ok": True,
+        "flow": "flow_01",
+        "fake_db": str(FLOW_01_DB_PATH),
+        "fake_db_exists": FLOW_01_DB_PATH.exists(),
+        "fake_db_counts": _flow_01_counts(),
+        "default_workspace_path": str(_flow_01_default_workspace()),
+        "active_ui_workspace_path": str(settings.get("workspace_path") or ""),
+        "directive_file": str(directive_path),
+        "directive_exists": directive_path.exists(),
+        "directive_chars": len(directive.strip()),
+        "run_endpoint": "/api/workflows/flow_01/run",
+    }
+
+
+@app.post("/api/workflows/flow_01/prepare", tags=["workflows"])
+def prepare_flow_01(body: FlowPrepareRequest):
+    try:
+        from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+        workspace = _flow_01_workspace_path(body.workspace_path)
+        workspace.mkdir(parents=True, exist_ok=True)
+        directive_info = _flow_01_write_directive(body.directive, str(workspace))
+        storage = FlowStorage()
+        storage.init_db()
+        db_directive = _flow_01_insert_db_directive(directive_info["directive"], str(workspace))
+        return {
+            "ok": True,
+            "flow": "flow_01",
+            "workspace_path": str(workspace),
+            "directive_file": directive_info["directive_file"],
+            "directive": directive_info["directive"],
+            "db_directive": db_directive,
+            "fake_db": str(storage.db_path),
+            "fake_db_counts": _flow_01_counts(),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/workflows/flow_01/directive", tags=["workflows"])
+def get_flow_01_directive(workspace_path: str | None = Query(default=None), directive_file: str | None = Query(default=None)):
+    path = _flow_01_directive_file(workspace_path, directive_file)
+    content = path.read_text(encoding="utf-8") if path.exists() else ""
+    return {
+        "ok": True,
+        "flow": "flow_01",
+        "workspace_path": str(path.parent),
+        "directive_file": str(path),
+        "exists": path.exists(),
+        "directive": content,
+        "directive_chars": len(content.strip()),
+    }
+
+
+@app.put("/api/workflows/flow_01/directive", tags=["workflows"])
+def put_flow_01_directive(body: FlowDirectiveRequest):
+    if not body.directive.strip():
+        raise HTTPException(status_code=400, detail="directive is required")
+    directive_info = _flow_01_write_directive(body.directive, body.workspace_path, body.directive_file)
+    db_directive = _flow_01_insert_db_directive(directive_info["directive"], body.workspace_path)
+    return {"ok": True, "flow": "flow_01", **directive_info, "db_directive": db_directive, "fake_db_counts": _flow_01_counts()}
+
+
+@app.get("/api/workflows/flow_01/runs", tags=["workflows"])
+def list_flow_01_runs(limit: int = Query(default=20, ge=1, le=100)):
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT * FROM workflow_runs
+             ORDER BY id DESC
+             LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return {
+        "ok": True,
+        "flow": "flow_01",
+        "fake_db": str(storage.db_path),
+        "runs": [_flow_01_run_summary(row) for row in rows],
+        "fake_db_counts": _flow_01_counts(),
+    }
+
+
+@app.get("/api/workflows/flow_01/runs/{run_id}", tags=["workflows"])
+def get_flow_01_run(run_id: int):
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM workflow_runs WHERE id=?", (run_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="flow_01 run not found")
+    return {
+        "ok": True,
+        "flow": "flow_01",
+        "fake_db": str(storage.db_path),
+        "run": _flow_01_run_summary(row),
+        "input": json.loads(row["input_json"]),
+        "output": json.loads(row["output_json"]),
+    }
+
+
+@app.post("/api/workflows/flow_01/runs/{run_id}/cancel", tags=["workflows"])
+def cancel_flow_01_run(run_id: int, body: FlowCancelRequest | None = None):
+    body = body or FlowCancelRequest()
+    row = _flow_01_run_row(run_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="flow_01 run not found")
+    current_status = str(row["status"])
+    if current_status in {"completed", "failed", "cancelled"}:
+        return {
+            "ok": True,
+            "flow": "flow_01",
+            "run_id": run_id,
+            "status": current_status,
+            "changed": False,
+            "message": f"run is already {current_status}",
+        }
+    output = json.loads(row["output_json"] or "{}")
+    phase = str(output.get("phase") or "")
+    cancel_output = _flow_01_merge_run_output(
+        run_id,
+        status="cancelling",
+        updates={
+            "status": "cancelling",
+            "phase": "cancelling",
+            "cancel_requested_at": utc_now(),
+            "cancel_reason": body.reason,
+            "previous_status": current_status,
+            "previous_phase": phase,
+        },
+    )
+    worker_stop_result: dict[str, Any] | None = None
+    role_to_stop = None
+    if phase == "manager_running":
+        role_to_stop = "manager"
+    elif phase in {"manager_completed", "worker_running"}:
+        role_to_stop = "worker"
+    elif phase == "reviewer_running":
+        role_to_stop = "reviewer"
+    if body.stop_worker and role_to_stop:
+        try:
+            worker_stop_result = agent_kill(role_to_stop)
+        except Exception as exc:
+            worker_stop_result = {"ok": False, "error": str(exc)}
+    _append_text(
+        active_agent_stream_path("worker"),
+        json.dumps({"t": "sys", "msg": f"flow_01 cancel requested for run #{run_id}"}, ensure_ascii=False) + "\n",
+    )
+    _append_text(_RUN_LOG, f"[{utc_now()}] flow_01 cancel requested run_id={run_id} reason={body.reason}\n")
+    return {
+        "ok": True,
+        "flow": "flow_01",
+        "run_id": run_id,
+        "status": "cancelling",
+        "changed": current_status != "cancelling",
+        "phase": cancel_output.get("phase"),
+        "previous_phase": phase,
+        "stop_worker": body.stop_worker,
+        "stopped_role": role_to_stop,
+        "worker_stop_result": worker_stop_result,
+        "poll": f"/api/workflows/flow_01/runs/{run_id}",
+    }
+
+
+@app.get("/api/workflows/flow_01/plan", tags=["workflows"])
+def get_flow_01_plan():
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    session_id = get_active_project_session_id()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM session_plan WHERE session_id=? ORDER BY updated_at DESC LIMIT 1", (session_id,)).fetchone()
+    if not row:
+        return {"content": "", "updated_by": None, "updated_at": None, "session_id": None}
+    return {
+        "content": row["content"],
+        "updated_by": row["updated_by"],
+        "updated_at": row["updated_at"],
+        "session_id": row["session_id"],
+    }
+
+
+@app.put("/api/workflows/flow_01/plan", tags=["workflows"])
+async def put_flow_01_plan(request: Request):
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+    from power_teams.agentic_workflows.flow_01.interface import utc_now
+
+    payload = await request.json()
+    content = str(payload.get("content", ""))
+    updated_by = str(payload.get("updated_by") or "human")
+    settings = read_settings()
+    session_id = get_active_project_session_id()
+    power_team_project_id = str(settings.get("active_workspace_id") or settings.get("workspace_id") or "power-teams")
+    storage = FlowStorage()
+    storage.init_db()
+    now = utc_now()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO session_plan (session_id, power_team_project_id, content, updated_by, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(session_id) DO UPDATE SET
+              power_team_project_id=excluded.power_team_project_id,
+              content=excluded.content,
+              updated_by=excluded.updated_by,
+              updated_at=excluded.updated_at
+            """,
+            (session_id, power_team_project_id, content, updated_by, now),
+        )
+        conn.commit()
+    return {"ok": True}
+
+
+@app.get("/api/workflows/flow_01/todos", tags=["workflows"])
+def get_flow_01_todos():
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    session_id = get_active_project_session_id()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT id, session_id, parent_id, content, status, priority, position, owner, updated_at
+              FROM session_todos
+             WHERE session_id=?
+             ORDER BY parent_id IS NOT NULL, position, updated_at DESC
+            """,
+            (session_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/workflows/flow_01/todos", tags=["workflows"])
+async def post_flow_01_todo(request: Request):
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+    from power_teams.agentic_workflows.flow_01.interface import utc_now
+
+    payload = await request.json()
+    content = str(payload.get("content", "")).strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="content is required")
+    settings = read_settings()
+    session_id = get_active_project_session_id()
+    power_team_project_id = str(settings.get("active_workspace_id") or settings.get("workspace_id") or "power-teams")
+    todo_id = str(uuid.uuid4())
+    now = utc_now()
+    storage = FlowStorage()
+    storage.init_db()
+    with sqlite3.connect(storage.db_path) as conn:
+        position = int(conn.execute("SELECT COALESCE(MAX(position), -1) + 1 FROM session_todos WHERE session_id=?", (session_id,)).fetchone()[0])
+        conn.execute(
+            """
+            INSERT INTO session_todos
+              (id, power_team_project_id, session_id, parent_id, content, status, priority, position, owner, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+            """,
+            (
+                todo_id,
+                power_team_project_id,
+                session_id,
+                payload.get("parent_id"),
+                content,
+                payload.get("priority") or "medium",
+                position,
+                payload.get("owner") or "manager",
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+    return {"ok": True, "id": todo_id}
+
+
+@app.patch("/api/workflows/flow_01/todos/{todo_id}", tags=["workflows"])
+async def patch_flow_01_todo(todo_id: str, request: Request):
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+    from power_teams.agentic_workflows.flow_01.interface import utc_now
+
+    payload = await request.json()
+    allowed = {"pending", "in_progress", "completed", "blocked"}
+    status = payload.get("status")
+    if status not in allowed:
+        raise HTTPException(status_code=400, detail="unsupported todo status")
+    storage = FlowStorage()
+    storage.init_db()
+    session_id = get_active_project_session_id()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.execute("UPDATE session_todos SET status=?, updated_at=? WHERE id=? AND session_id=?", (status, utc_now(), todo_id, session_id))
+        conn.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/workflows/flow_01/todos/{todo_id}", tags=["workflows"])
+def delete_flow_01_todo(todo_id: str):
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    session_id = get_active_project_session_id()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.execute("DELETE FROM session_todos WHERE session_id=? AND (id=? OR parent_id=?)", (session_id, todo_id, todo_id))
+        conn.commit()
+    return {"ok": True}
+
+
+@app.get("/api/workflows/flow_01/suggestion", tags=["workflows"])
+def get_flow_01_suggestion():
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    session_id = get_active_project_session_id()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM suggestion_queue WHERE session_id=? ORDER BY id DESC LIMIT 1", (session_id,)).fetchone()
+    if not row:
+        return {}
+    return {
+        "id": row["id"],
+        "content": row["content"],
+        "status": row["status"],
+        "queue_status": row["status"],
+        "status_label": row["status"],
+        "verification": row["verification"],
+        "related_files": json.loads(row["related_files"] or "[]"),
+        "created_at": row["created_at"],
+    }
+
+
+@app.get("/api/workflows/flow_01/manager-messages", tags=["workflows"])
+def get_flow_01_manager_messages(limit: int = Query(default=50, ge=1, le=200)):
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    session_id = get_active_project_session_id()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT id, content, created_at, queue_status, status_label
+              FROM manager_messages
+             WHERE session_id=?
+             ORDER BY id DESC
+             LIMIT ?
+            """,
+            (session_id, limit),
+        ).fetchall()
+    return [
+        {
+            "id": row["id"],
+            "content": row["content"],
+            "created_at": row["created_at"],
+            "is_human": False,
+            "queue_status": row["queue_status"],
+            "status_label": row["status_label"],
+        }
+        for row in reversed(rows)
+    ]
+
+
+@app.post("/api/workflows/flow_01/run", tags=["workflows"])
+def run_flow_01(body: FlowRunRequest):
+    try:
+        from power_teams.agentic_workflows.flow_01 import (
+            Flow01Workflow,
+            FlowStorage,
+            LocalFileWorkerExecutor,
+            LocalManagerExecutor,
+            LocalReviewerExecutor,
+            OpenCodeManagerExecutor,
+            OpenCodeReviewerExecutor,
+            OpenCodeWorkerExecutor,
+        )
+        from power_teams.agentic_workflows.flow_01.adapters import (
+            FastApiServiceSignalAdapter,
+            RecordingSignalAdapter,
+        )
+
+        flow_input = _flow_01_input_from_current_ui(body)
+        adapter = FastApiServiceSignalAdapter() if body.emit_real_ui_signals else RecordingSignalAdapter()
+        storage = FlowStorage()
+        storage.init_db()
+        manager_executor = OpenCodeManagerExecutor() if body.use_real_worker else LocalManagerExecutor()
+        worker_executor = OpenCodeWorkerExecutor() if body.use_real_worker else LocalFileWorkerExecutor()
+        reviewer_executor = OpenCodeReviewerExecutor() if body.use_real_worker else LocalReviewerExecutor()
+        workflow = Flow01Workflow(
+            storage=storage,
+            signal_adapter=adapter,
+            workdir=Path(flow_input.workspace_path or ROOT / "core" / "runtime" / "workflow_01_ui"),
+            manager_executor=manager_executor,
+            worker_executor=worker_executor,
+            reviewer_executor=reviewer_executor,
+        )
+        outputs = workflow.run_loops(flow_input, loops=body.loops)
+        count_tables = (
+            "project_sessions",
+            "project_session_role_sessions",
+            "workflow_runs",
+            "user_directives",
+            "manager_messages",
+            "session_plan",
+            "session_todos",
+            "suggestion_queue",
+            "worker_reports",
+            "reviewer_sessions",
+            "project_handoff",
+        )
+        fake_db_counts = {table: workflow.storage.count(table) for table in count_tables}
+        last_output = outputs[-1] if outputs else None
+        return {
+            "ok": True,
+            "flow": "flow_01",
+            "loops": len(outputs),
+            "requested": {
+                "workspace_path": flow_input.workspace_path,
+                "use_real_worker": body.use_real_worker,
+            },
+            "session_id": flow_input.project_session_id,
+            "power_team_project_id": flow_input.power_team_project_id,
+            "fake_db": str(workflow.storage.db_path),
+            "fake_db_counts": fake_db_counts,
+            "emit_real_ui_signals": body.emit_real_ui_signals,
+            "stream_agents": list(_DEFAULT_STREAM_AGENTS),
+            "last_status": last_output.status if last_output else None,
+            "last_task": last_output.suggestion.content if last_output else None,
+            "last_output": {
+                "manager_message": last_output.manager_message.content,
+                "worker_report": last_output.worker.content,
+                "reviewer_feedback": last_output.reviewer.content,
+                "files_changed": last_output.worker.payload.get("files_changed", []),
+                "test_result": last_output.worker.payload.get("test_result", ""),
+                "known_issues": last_output.worker.payload.get("known_issues", []),
+            } if last_output else None,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/api/workflows/flow_01/start-loop", tags=["workflows"])
+def start_flow_01_loop(body: FlowRunRequest):
+    try:
+        from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+        flow_input = _flow_01_input_from_current_ui(body)
+        storage = FlowStorage()
+        storage.init_db()
+        start = _flow_01_create_start_loop_run(
+            flow_input,
+            use_real_worker=body.use_real_worker,
+            emit_real_ui_signals=body.emit_real_ui_signals,
+        )
+        thread = threading.Thread(
+            target=_flow_01_background_run,
+            args=(start["run_id"], flow_input, body),
+            name=f"flow_01_run_{start['run_id']}",
+            daemon=True,
+        )
+        thread.start()
+        return {
+            "ok": True,
+            "flow": "flow_01",
+            "mode": "background",
+            "run_id": start["run_id"],
+            "status": start["status"],
+            "phase": start["phase"],
+            "session_id": flow_input.project_session_id,
+            "power_team_project_id": flow_input.power_team_project_id,
+            "workspace_path": flow_input.workspace_path,
+            "task": start["task"],
+            "todos": start["todos"],
+            "fake_db": start["fake_db"],
+            "fake_db_counts": _flow_01_counts(),
+            "poll": f"/api/workflows/flow_01/runs/{start['run_id']}",
+            "use_real_worker": body.use_real_worker,
+            "emit_real_ui_signals": body.emit_real_ui_signals,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.post("/api/clear-all", tags=["misc"])

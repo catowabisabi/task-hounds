@@ -73,6 +73,10 @@ _MANAGER_FORMAT_INSTRUCTIONS = (
     "Do not call edit, write, patch, shell, or file-changing tools. "
     "You may inspect project context only when needed, then create a precise Worker task in <SUGGESTION_CONTENT>. "
     "All implementation must be delegated to the Worker through the suggestion queue.\n\n"
+    "REQUIRED OUTPUT ORDER AND TEMPLATE:\n"
+    "You MUST output every block below, in this exact order, every time. "
+    "Do not skip <TODO_UPDATE_JSON>. Do not replace it with prose. "
+    "If there is no existing todo id, use null for id. The JSON must parse with json.loads.\n\n"
     "<MANAGER_MESSAGE>\n"
     "Your message to the human. Be warm, conversational, and proactive:\n"
     "- Summarize what was accomplished in friendly language\n"
@@ -81,6 +85,32 @@ _MANAGER_FORMAT_INSTRUCTIONS = (
     "- Suggest creative ideas based on the project context\n"
     "- Use natural, engaging tone (not robotic)\n"
     "</MANAGER_MESSAGE>\n\n"
+    "<PLAN>\n"
+    "## Goal\n"
+    "[One sentence]\n\n"
+    "## Steps\n"
+    "1. [Specific step]\n\n"
+    "## Success Criteria\n"
+    "- [ ] [Concrete check]\n"
+    "</PLAN>\n\n"
+    "<TODO_LIST>\n"
+    "- [ ] [same content as JSON item 1]\n"
+    "- [→] [same content as JSON item 2 when in progress]\n"
+    "- [✓] [same content as JSON item 3 when completed]\n"
+    "</TODO_LIST>\n\n"
+    "<TODO_UPDATE_JSON>\n"
+    "{\n"
+    "  \"items\": [\n"
+    "    {\n"
+    "      \"id\": null,\n"
+    "      \"content\": \"same content as TODO_LIST item\",\n"
+    "      \"status\": \"pending\",\n"
+    "      \"priority\": \"medium\",\n"
+    "      \"position\": 0\n"
+    "    }\n"
+    "  ]\n"
+    "}\n"
+    "</TODO_UPDATE_JSON>\n\n"
     "<SUGGESTION_CONTENT>\n"
     "The precise task instruction for the Worker. Include all necessary context.\n"
     "One atomic task only. Reference specific files and acceptance criteria.\n"
@@ -254,6 +284,115 @@ def _mark_human_manager_messages_processed(latest_id: int | None) -> None:
     save_settings(settings)
 
 
+def _section_block(name: str, content: str) -> str:
+    return f"\n\n<{name}>\n{content.strip()}\n</{name}>\n"
+
+
+def _repair_manager_section(response: str, name: str, instructions: str, *, max_attempts: int = 2) -> str:
+    """Ask the manager for one missing machine-readable section only."""
+    prompt = (
+        "You are repairing a previous Manager response for Task Hounds.\n"
+        f"Return ONLY the <{name}>...</{name}> block. No prose outside the tags.\n\n"
+        "=== PREVIOUS MANAGER RESPONSE ===\n"
+        f"{response[:6000]}\n\n"
+        "=== CURRENT PLAN/TODO CONTEXT ===\n"
+        f"{_current_plan_todo_context(get_active_session_id())}\n\n"
+        f"{instructions.strip()}\n"
+    )
+    for attempt in range(max_attempts):
+        repaired = repair_mojibake(send_to_agent("manager", prompt, max_retries=0) or "")
+        content = _extract_section(repaired, name)
+        if content.strip():
+            log(f"Manager repair produced <{name}> on attempt {attempt + 1}/{max_attempts}")
+            return _section_block(name, content)
+        log(f"Manager repair missing <{name}> on attempt {attempt + 1}/{max_attempts}")
+        prompt = (
+            f"Your previous repair did not include a valid <{name}> block.\n"
+            f"Return ONLY <{name}>...</{name}> now. No explanations.\n\n"
+            + instructions.strip()
+        )
+    return ""
+
+
+def _repair_todo_json(response: str, todo_block: str, *, max_attempts: int = 3) -> str:
+    """Convert TODO_LIST text into the required TODO_UPDATE_JSON block."""
+    prompt = (
+        "Convert the TODO_LIST below into machine-readable JSON for Task Hounds.\n"
+        "Return ONLY <TODO_UPDATE_JSON>...</TODO_UPDATE_JSON>. No prose.\n"
+        "The JSON must parse with json.loads and must use this shape:\n"
+        "{\n"
+        "  \"items\": [\n"
+        "    {\"id\": null, \"content\": \"todo title\", \"status\": \"pending\", \"priority\": \"medium\", \"position\": 0}\n"
+        "  ]\n"
+        "}\n"
+        "Allowed status values: pending, in_progress, completed, blocked.\n"
+        "Map [ ] to pending, [→] to in_progress, [✓] or [x] to completed, [✗] to blocked.\n"
+        "Use existing ids from CURRENT TODO CONTEXT only when the content matches; otherwise use null.\n\n"
+        "=== TODO_LIST TO CONVERT ===\n"
+        f"{todo_block}\n\n"
+        "=== CURRENT TODO CONTEXT ===\n"
+        f"{_current_plan_todo_context(get_active_session_id())}\n\n"
+        "=== PREVIOUS MANAGER RESPONSE FOR CONTEXT ===\n"
+        f"{response[:4000]}\n"
+    )
+    for attempt in range(max_attempts):
+        repaired = repair_mojibake(send_to_agent("manager", prompt, max_retries=0) or "")
+        items = _parse_todo_update_json(_extract_section(repaired, "TODO_UPDATE_JSON"))
+        if items:
+            log(f"Manager repair produced valid TODO_UPDATE_JSON on attempt {attempt + 1}/{max_attempts}")
+            return _section_block("TODO_UPDATE_JSON", _extract_section(repaired, "TODO_UPDATE_JSON"))
+        log(f"Manager repair produced invalid TODO_UPDATE_JSON on attempt {attempt + 1}/{max_attempts}")
+        prompt = (
+            "The JSON was missing or invalid. Return ONLY this block with valid JSON values filled in:\n"
+            "<TODO_UPDATE_JSON>\n"
+            "{\n"
+            "  \"items\": [\n"
+            "    {\"id\": null, \"content\": \"todo title\", \"status\": \"pending\", \"priority\": \"medium\", \"position\": 0}\n"
+            "  ]\n"
+            "}\n"
+            "</TODO_UPDATE_JSON>\n\n"
+            f"TODO_LIST:\n{todo_block}\n"
+        )
+    return ""
+
+
+def _is_valid_handoff_json(raw: str) -> bool:
+    try:
+        data = json.loads(raw or "")
+    except json.JSONDecodeError:
+        return False
+    return isinstance(data, dict)
+
+
+def _repair_handoff_json(response: str, *, max_attempts: int = 2) -> str:
+    """Create a machine-readable HANDOFF_UPDATE block for the project handoff."""
+    prompt = (
+        "Create a Task Hounds handoff update from the manager response below.\n"
+        "Return ONLY <HANDOFF_UPDATE>...</HANDOFF_UPDATE>. No prose.\n"
+        "The block content must be a valid JSON object that parses with json.loads.\n"
+        "Include changed fields only, such as current_task, current_micro_flow, "
+        "completion_criteria, working_direction, important_files, tested_files, known_bugs.\n\n"
+        "=== MANAGER RESPONSE ===\n"
+        f"{response[:6000]}\n"
+    )
+    for attempt in range(max_attempts):
+        repaired = repair_mojibake(send_to_agent("manager", prompt, max_retries=0) or "")
+        raw = _extract_section(repaired, "HANDOFF_UPDATE")
+        if _is_valid_handoff_json(raw):
+            log(f"Manager repair produced valid HANDOFF_UPDATE on attempt {attempt + 1}/{max_attempts}")
+            return _section_block("HANDOFF_UPDATE", raw)
+        log(f"Manager repair produced invalid HANDOFF_UPDATE on attempt {attempt + 1}/{max_attempts}")
+        prompt = (
+            "The HANDOFF_UPDATE was missing or invalid. Return ONLY this block with valid JSON:\n"
+            "<HANDOFF_UPDATE>\n"
+            "{\"current_task\":\"short current task\","
+            "\"current_micro_flow\":[\"next concrete step\"],"
+            "\"completion_criteria\":[\"concrete acceptance check\"]}\n"
+            "</HANDOFF_UPDATE>"
+        )
+    return ""
+
+
 # ── Manager cycle entry point ─────────────────────────────────────────────────
 
 def manager_cycle() -> None:
@@ -360,10 +499,11 @@ def _manager_cycle_impl() -> None:
             + _build_manager_instructions()
         )
         response = send_to_agent("manager", prompt)
-        _handle_manager_response(response, fallback_task=user_request)
-        if directive_row:
+        accepted = _handle_manager_response(response, fallback_task=user_request)
+        if accepted and directive_row:
             update_user_directive_status(int(directive_row["id"]), "processed", path=DB_PATH)
-        write_text(user_input_path(), "")
+        if accepted:
+            write_text(user_input_path(), "")
         return
 
     if unprocessed_notes:
@@ -394,12 +534,13 @@ def _manager_cycle_impl() -> None:
         )
         response = send_to_agent("manager", prompt)
         replace_id = active_worker_task["id"] if active_worker_task else None
-        _handle_manager_response(
+        accepted = _handle_manager_response(
             response,
             fallback_task="\n".join(unprocessed_notes),
             replace_suggestion_id=replace_id,
         )
-        _mark_human_manager_messages_processed(latest_human_note_id)
+        if accepted:
+            _mark_human_manager_messages_processed(latest_human_note_id)
         return
 
     # --- Scenario 2: Worker finished a released suggestion ---
@@ -523,13 +664,14 @@ def _manager_cycle_impl() -> None:
         msg_upper = _extract_section(response, "MANAGER_MESSAGE").upper()
         qa_passed = "PASS" in msg_upper or "APPROVED" in msg_upper
 
-        update_suggestion(released["id"], status="done")
-        log(f"Suggestion #{released['id']} marked done. QA={'PASS' if qa_passed else 'FAIL'}")
-
-        _handle_manager_response(response)
-
-        write_text(worker_report_path(), "# Worker Report\n")
-        write_text(worker_status_path(), "idle\n")
+        accepted = _handle_manager_response(response)
+        if accepted:
+            update_suggestion(released["id"], status="done")
+            log(f"Suggestion #{released['id']} marked done. QA={'PASS' if qa_passed else 'FAIL'}")
+            write_text(worker_report_path(), "# Worker Report\n")
+            write_text(worker_status_path(), "idle\n")
+        else:
+            log(f"Suggestion #{released['id']} remains worker_done because manager JSON was rejected")
         return
 
     # --- Scenario 3: Proactive planning ---
@@ -560,8 +702,9 @@ def _manager_cycle_impl() -> None:
             + _build_manager_instructions()
         )
         response = send_to_agent("manager", prompt)
-        update_suggestion(pending["id"], status="done")
-        _handle_manager_response(response, fallback_task=pending["content"])
+        accepted = _handle_manager_response(response, fallback_task=pending["content"])
+        if accepted:
+            update_suggestion(pending["id"], status="done")
         return
 
     if worker_status != "idle":
@@ -614,8 +757,8 @@ def _manager_cycle_impl() -> None:
     _handle_manager_response(
         response,
         fallback_task=(
-            "Continue executing the current manager plan. Pick the highest-priority pending todo, "
-            "turn it into a concrete implementation task, and complete one useful step."
+            "Execute the highest-priority pending manager todo directly. Do not create a planning-only task. "
+            "Make one concrete implementation/file change, verify it, and report exact files changed."
         ),
     )
 
@@ -624,7 +767,7 @@ def _handle_manager_response(
     response: str,
     fallback_task: str | None = None,
     replace_suggestion_id: int | None = None,
-) -> None:
+) -> bool:
     """
     Parse a structured manager response and persist all parts:
     - PLAN             -> session_plan
@@ -636,55 +779,90 @@ def _handle_manager_response(
     Retries up to 3 times if PLAN, TODO_LIST, or TODO_UPDATE_JSON is missing.
     """
     MAX_RETRIES = 3
-    _retry = 0
+    repair_attempts = 0
+    update_agent("manager", state="busy", current_step="parsing manager response", current_step_started_at=utc_now(), last_seen=utc_now())
 
-    while True:
+    for repair_attempts in range(MAX_RETRIES + 1):
         response = repair_mojibake(response or "")
         has_plan = bool(_extract_section(response, "PLAN"))
+        has_manager_msg = bool(_extract_section(response, "MANAGER_MESSAGE"))
         has_todo = bool(_extract_section(response, "TODO_LIST"))
         todo_json_items = _parse_todo_update_json(_extract_section(response, "TODO_UPDATE_JSON"))
         has_todo_json = bool(todo_json_items)
 
-        _persist_plan_and_todos_from(response, owner="manager")
+        if has_plan and has_todo and has_todo_json:
+            break
 
-        if (not has_plan or not has_todo or not has_todo_json) and _retry < MAX_RETRIES:
-            missing = []
-            if not has_plan: missing.append("<PLAN>")
-            if not has_todo: missing.append("<TODO_LIST>")
-            if not has_todo_json: missing.append("<TODO_UPDATE_JSON>")
-            log(f"⚠ Manager response missing {', '.join(missing)} — asking manager to retry (attempt {_retry + 1}/{MAX_RETRIES})")
-            correction = (
-                f"Your previous response was missing the required {' and '.join(missing)} block(s).\n"
-                "Re-emit your COMPLETE response now, including:\n"
-                "  - A full <PLAN>...</PLAN> block (Goal, Steps, Success Criteria)\n"
-                "  - A full <TODO_LIST>...</TODO_LIST> block (current top-level items with status)\n"
-                "  - A full <TODO_UPDATE_JSON>...</TODO_UPDATE_JSON> block with valid JSON; use existing todo IDs from CURRENT TODO LIST; mark completed work as status=\"completed\" here.\n"
-                "  - The MANAGER_MESSAGE, SUGGESTION_CONTENT, SUGGESTION_VERIFICATION, and HANDOFF_UPDATE you intended.\n\n"
-                "Do not claim completion in MANAGER_MESSAGE unless TODO_UPDATE_JSON sets the matching todo status to completed.\n"
-                "Current todo context with IDs:\n"
-                f"{_current_plan_todo_context(get_active_session_id())}\n\n"
-                "Do not abbreviate. The UI parses these blocks directly; missing blocks mean the cycle is incomplete.\n\n"
-                + _build_manager_instructions()
+        if repair_attempts >= MAX_RETRIES:
+            break
+
+        missing = []
+        update_agent(
+            "manager",
+            state="busy",
+            current_step=f"repairing manager response ({repair_attempts + 1}/{MAX_RETRIES})",
+            current_step_started_at=utc_now(),
+            last_seen=utc_now(),
+        )
+        if not has_manager_msg: missing.append("<MANAGER_MESSAGE>")
+        if not has_plan: missing.append("<PLAN>")
+        if not has_todo: missing.append("<TODO_LIST>")
+        if not has_todo_json: missing.append("<TODO_UPDATE_JSON>")
+        log(f"⚠ Manager response missing {', '.join(missing)} — repairing focused sections (attempt {repair_attempts + 1}/{MAX_RETRIES})")
+
+        if not has_manager_msg:
+            response += _repair_manager_section(
+                response,
+                "MANAGER_MESSAGE",
+                "Write a short message to the human explaining what you understood and what worker task you are preparing.",
+                max_attempts=1,
             )
-            response = send_to_agent("manager", correction)
-            _retry += 1
-            continue
+
+        if not has_plan:
+            response += _repair_manager_section(
+                response,
+                "PLAN",
+                "Write a concise plan with ## Goal, ## Steps, and ## Success Criteria. Return only the PLAN block.",
+                max_attempts=1,
+            )
+
+        has_todo = bool(_extract_section(response, "TODO_LIST"))
+        if not has_todo:
+            response += _repair_manager_section(
+                response,
+                "TODO_LIST",
+                "Create the manager TODO_LIST text block. Use lines like '- [ ] concrete task', '- [→] in-progress task', '- [✓] completed task'. Return only the TODO_LIST block.",
+                max_attempts=1,
+            )
+
+        todo_block = _extract_section(response, "TODO_LIST")
+        todo_json_items = _parse_todo_update_json(_extract_section(response, "TODO_UPDATE_JSON"))
+        if todo_block and not todo_json_items:
+            response += _repair_todo_json(response, todo_block, max_attempts=1)
         break
 
-    if not has_plan:
-        log(f"⚠ Manager STILL missing <PLAN> after {_retry} retries — accepting incomplete cycle")
-    if not has_todo:
-        log(f"⚠ Manager STILL missing <TODO_LIST> after {_retry} retries — accepting incomplete cycle")
+    response = repair_mojibake(response or "")
+    has_plan = bool(_extract_section(response, "PLAN"))
+    has_todo = bool(_extract_section(response, "TODO_LIST"))
 
+    if not has_plan:
+        log(f"⚠ Manager STILL missing <PLAN> after {repair_attempts} repair attempts — accepting incomplete cycle")
+    if not has_todo:
+        log(f"⚠ Manager STILL missing <TODO_LIST> after {repair_attempts} repair attempts — accepting incomplete cycle")
+
+    update_agent("manager", state="busy", current_step="persisting plan and todos", current_step_started_at=utc_now(), last_seen=utc_now())
+    _persist_plan_and_todos_from(response, owner="manager")
+    todo_json_items = _parse_todo_update_json(_extract_section(response, "TODO_UPDATE_JSON"))
+    has_todo_json = bool(todo_json_items)
     if not has_todo_json:
         msg = (
             "Manager response rejected: missing or invalid <TODO_UPDATE_JSON> after "
-            f"{_retry} retries. I did not create a worker task from this response because "
+            f"{repair_attempts} focused repair attempts. I did not create a worker task from this response because "
             "todo status must be updated through the database JSON block."
         )
         log(msg)
         _add_manager_message(msg)
-        return
+        return False
 
     manager_msg = _extract_section(response, "MANAGER_MESSAGE")
     suggestion_content = _extract_section(response, "SUGGESTION_CONTENT")
@@ -743,6 +921,7 @@ def _handle_manager_response(
         directive_complete = True
 
     if manager_msg:
+        update_agent("manager", state="busy", current_step="saving manager message", current_step_started_at=utc_now(), last_seen=utc_now())
         _add_manager_message(manager_msg)
         log(f"Manager message saved ({len(manager_msg)} chars)")
 
@@ -797,7 +976,12 @@ def _handle_manager_response(
             log(f"New suggestion #{sid} created (status=released)")
             _ensure_todo_for_suggestion(suggestion_content)
 
+    handoff_raw = _extract_section(response, "HANDOFF_UPDATE")
+    if (suggestion_content or fallback_task) and not _is_valid_handoff_json(handoff_raw):
+        response += _repair_handoff_json(response, max_attempts=1)
+
     updated = apply_handoff_update(response, updated_by="manager")
     if fallback_handoff and updated is None:
         new_ver = _upsert_handoff(updated_by="manager-fallback", **fallback_handoff)
         log(f"Fallback handoff updated to version {new_ver}")
+    return True

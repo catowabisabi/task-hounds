@@ -1,4 +1,5 @@
 const FASTAPI_BASE = "http://127.0.0.1:8766";
+const FLOW_TEST_BASE = "http://127.0.0.1:8866";
 const LEGACY_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8765";
 
 let _base: string | null = null;
@@ -38,16 +39,18 @@ async function resolveBase(): Promise<string> {
       return currentOrigin;
     }
 
-    if (currentOrigin !== FASTAPI_BASE) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (await tryPing(FASTAPI_BASE)) {
-          _base = FASTAPI_BASE;
-          console.log(`[API] Connected to FastAPI on port 8766`);
-          return FASTAPI_BASE;
-        }
-        if (attempt < 2) {
-          console.log(`[API] FastAPI not ready, retrying in 1s (${attempt + 1}/3)...`);
-          await new Promise(r => setTimeout(r, 1000));
+    for (const candidate of [import.meta.env.VITE_API_BASE, FASTAPI_BASE, FLOW_TEST_BASE].filter(Boolean) as string[]) {
+      if (currentOrigin !== candidate) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (await tryPing(candidate)) {
+            _base = candidate;
+            console.log(`[API] Connected to FastAPI on ${candidate}`);
+            return candidate;
+          }
+          if (attempt < 2) {
+            console.log(`[API] FastAPI not ready at ${candidate}, retrying in 1s (${attempt + 1}/3)...`);
+            await new Promise(r => setTimeout(r, 1000));
+          }
         }
       }
     }
@@ -174,6 +177,9 @@ export interface Agent {
   state: "idle" | "busy" | "waiting" | "error" | "offline";
   task_complete: number;
   last_error: string | null;
+  current_step?: string | null;
+  current_step_started_at?: string | null;
+  last_stream_at?: string | null;
   last_seen: string | null;
   session_id: string | null;
   backend_type: string;

@@ -6,10 +6,11 @@ type EvThink      = { t: "think";      text: string; ts?: number };
 type EvTool       = { t: "tool";       name: string; status: string; input: Record<string,unknown>; output: string; error: string; ts?: number };
 type EvStepEnd    = { t: "step_end";   reason: string; tokens: Record<string,unknown>; cost: number; ts?: number };
 type EvSys        = { t: "sys";        msg: string; kind?: "elapsed"|"warn"|"info"; ts?: number };
+type EvFlow       = { t: "flow";       msg: string; suggestion?: string; status?: string; ts?: number };
 type EvError      = { t: "error";      msg: string; ts?: number };
 type EvPermission = { t: "permission"; tool: string; patterns: unknown; ts?: number };
 type EvRaw        = { t: "raw";        text: string; ts?: number };
-type Event        = EvText | EvThink | EvTool | EvStepEnd | EvSys | EvError | EvPermission | EvRaw;
+type Event        = EvText | EvThink | EvTool | EvStepEnd | EvSys | EvFlow | EvError | EvPermission | EvRaw;
 
 const TYPE_COLORS: Record<string, string> = {
   text:     "var(--text-secondary)",
@@ -17,6 +18,7 @@ const TYPE_COLORS: Record<string, string> = {
   tool:     "var(--blue)",
   step_end: "var(--green)",
   sys:      "var(--amber)",
+  flow:     "var(--green)",
   error:    "var(--red)",
   raw:      "var(--text-dim)",
 };
@@ -27,6 +29,7 @@ const TYPE_LABELS: Record<string, string> = {
   tool:     "TOOL",
   step_end: "STEP",
   sys:      "SYSTEM",
+  flow:     "FLOW",
   error:    "ERROR",
   raw:      "RAW",
 };
@@ -37,6 +40,7 @@ const TYPE_BG: Record<string, string> = {
   tool:     "var(--blue-bg)",
   step_end: "var(--green-bg)",
   sys:      "var(--amber-bg)",
+  flow:     "var(--green-bg)",
   error:    "var(--red-bg)",
   raw:      "var(--bg-base)",
 };
@@ -608,6 +612,19 @@ function EventRow({ ev, isNew }: { ev: Event; isNew: boolean }) {
         }
         </TypeBlock>
       );
+    case "flow":
+      return (
+        <TypeBlock ev={ev}>
+          <div className="px-2 py-1 text-[11px]" style={{ color: "var(--green)" }}>
+            <div className="font-semibold">{ev.msg}</div>
+            {ev.suggestion && (
+              <div className="mt-0.5 opacity-75" style={{ color: "var(--text-secondary)" }}>
+                {ev.status ? `${ev.status}: ` : ""}{ev.suggestion}
+              </div>
+            )}
+          </div>
+        </TypeBlock>
+      );
     case "error":
       return (
         <TypeBlock ev={ev}>
@@ -652,6 +669,7 @@ function LatestBanner({ ev, timestamp }: { ev: Event | ToolGroup; timestamp: num
     else if (e.t === "think") preview = e.text.replace(/\n/g, " ").slice(0, 80);
     else if (e.t === "tool")  preview = `[${e.name}] ${toolPrimaryDetail(e.name, e.input)}`.slice(0, 80);
     else if (e.t === "sys")   preview = e.msg.slice(0, 80);
+    else if (e.t === "flow")  preview = e.msg.slice(0, 80);
     else if (e.t === "error") preview = e.msg.slice(0, 80);
   }
   if (!preview) return null;
@@ -698,6 +716,7 @@ function topSignature(item: ToolGroup | Event): string {
     case "think": return `th:${ev.text.length}:${ev.text.slice(-30)}`;
     case "tool":  return `tl:${ev.name}:${JSON.stringify(ev.input).slice(0,40)}:${ev.status}:${(ev.output||"").length}`;
     case "sys":   return `s:${ev.msg.slice(-40)}`;
+    case "flow":  return `f:${ev.msg.slice(-40)}:${ev.status || ""}`;
     case "error": return `e:${ev.msg.slice(-40)}`;
     case "step_end": return `se:${ev.tokens.total||0}:${ev.cost||0}`;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

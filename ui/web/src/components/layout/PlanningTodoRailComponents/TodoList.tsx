@@ -112,7 +112,7 @@ export function TodoList({
   );
 }
 
-export function useTodoList(clearKey: number) {
+export function useTodoList(clearKey: number, apiPrefix = "/api") {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTopDraft, setNewTopDraft] = useState("");
   const [newChildDraft, setNewChildDraft] = useState<Record<string, string>>({});
@@ -120,7 +120,7 @@ export function useTodoList(clearKey: number) {
   const prevTodosRef = useRef<Record<string, string>>({});
 
   const loadTodos = useCallback(async () => {
-    const t = await apiGet<Todo[]>("/api/todos").catch(err => {
+    const t = await apiGet<Todo[]>(`${apiPrefix}/todos`).catch(err => {
       console.error("Failed to load todos", err);
       return [];
     });
@@ -148,7 +148,7 @@ export function useTodoList(clearKey: number) {
       }, 1100);
     }
     setTodos(t);
-  }, []);
+  }, [apiPrefix]);
 
   useEffect(() => { loadTodos(); }, [loadTodos, clearKey]);
 
@@ -156,7 +156,7 @@ export function useTodoList(clearKey: number) {
     const txt = newTopDraft.trim();
     if (!txt) return;
     try {
-      await apiPost("/api/todos", { content: txt, owner: "manager" });
+      await apiPost(`${apiPrefix}/todos`, { content: txt, owner: "manager" });
       setNewTopDraft("");
       loadTodos();
     } catch (err) {
@@ -168,7 +168,7 @@ export function useTodoList(clearKey: number) {
     const txt = (newChildDraft[parentId] || "").trim();
     if (!txt) return;
     try {
-      await apiPost("/api/todos", { content: txt, parent_id: parentId, owner: "worker" });
+      await apiPost(`${apiPrefix}/todos`, { content: txt, parent_id: parentId, owner: "worker" });
       setNewChildDraft(d => ({ ...d, [parentId]: "" }));
       loadTodos();
     } catch (err) {
@@ -185,7 +185,7 @@ export function useTodoList(clearKey: number) {
     };
     const next = NEXT[todo.status];
     try {
-      await apiPatch(`/api/todos/${todo.id}`, { status: next });
+      await apiPatch(`${apiPrefix}/todos/${todo.id}`, { status: next });
       setTodos(ts => ts.map(t => t.id === todo.id ? { ...t, status: next } : t));
     } catch (err) {
       console.error("Failed to update todo", err);
@@ -194,7 +194,7 @@ export function useTodoList(clearKey: number) {
 
   const removeTodo = async (id: string) => {
     try {
-      await apiDelete(`/api/todos/${id}`);
+      await apiDelete(`${apiPrefix}/todos/${id}`);
       setTodos(ts => ts.filter(t => t.id !== id && t.parent_id !== id));
     } catch (err) {
       console.error("Failed to delete todo", err);

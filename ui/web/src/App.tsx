@@ -295,11 +295,17 @@ function PipelineBar({
   agents,
   suggestion,
   loopRunning,
+  flow01Phase,
+  flow01Status,
+  flow01Task,
   onAgentsRefresh,
 }: {
   agents: Agent[];
   suggestion: Suggestion | null;
   loopRunning: boolean;
+  flow01Phase?: string | null;
+  flow01Status?: string | null;
+  flow01Task?: string | null;
   onAgentsRefresh?: () => void;
 }) {
   const manager  = agents.find(a => a.name === "manager");
@@ -314,6 +320,60 @@ function PipelineBar({
     state: StepState;
     color: string;
   };
+
+  if (flow01Phase || flow01Status) {
+    const phase = flow01Phase || "";
+    const done = flow01Status === "completed";
+    const cancelled = flow01Status === "cancelled" || flow01Status === "cancelling";
+    const flowSteps: Step[] = [
+      {
+        label: "Directive",
+        description: "Human directive received",
+        state: "completed",
+        color: "var(--amber)",
+      },
+      {
+        label: "Manager",
+        description: phase === "manager_running" ? "Manager agent is building prompt / calling LLM / parsing task JSON" : (flow01Task || "Manager selected one task"),
+        state: phase === "manager_running" ? "active" : phase ? "completed" : "pending",
+        color: "var(--blue)",
+      },
+      {
+        label: "Worker",
+        description: phase === "worker_running" ? (flow01Task || "Worker agent executing manager-selected task") : "Worker report recorded",
+        state: phase === "worker_running" ? "active" :
+          (phase === "reviewer_running" || phase === "completed" || phase.startsWith("cancelled_after")) ? "completed" : "pending",
+        color: "#f97316",
+      },
+      {
+        label: "Reviewer",
+        description: phase === "reviewer_running" ? "Reviewer agent checking QA, bugs, UX, and risks" : "Reviewer feedback",
+        state: phase === "reviewer_running" ? "active" : done ? "completed" : "pending",
+        color: "var(--green)",
+      },
+      {
+        label: cancelled ? "Cancelled" : "Done",
+        description: cancelled ? "Workflow cancellation requested" : "Workflow completed",
+        state: cancelled ? "error" : done ? "completed" : "pending",
+        color: cancelled ? "var(--red)" : "var(--green)",
+      },
+    ];
+    return (
+      <div className="flex items-center gap-0 px-4 py-2 bg-[var(--bg-panel)] border-b border-[var(--border)] text-[11px] shrink-0 overflow-x-auto">
+        <div className="flex items-center mr-3 shrink-0">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">flow_01</span>
+        </div>
+        <PipelineSteps steps={flowSteps} />
+        <div className="flex items-center gap-2 ml-auto shrink-0 pl-4" style={{ borderLeft: "1px solid var(--border)" }}>
+          <ProcessStatus
+            loopRunning={loopRunning}
+            errorAgents={agents.filter(a => a.state === "error" || a.state === "offline")}
+            onAgentsRefresh={onAgentsRefresh}
+          />
+        </div>
+      </div>
+    );
+  }
 
   // Determine step states
   const getSuggestionState = (): StepState => {
@@ -384,8 +444,38 @@ function PipelineBar({
         <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-dim)]">Current Workflow</span>
       </div>
 
-      <div className="flex items-center gap-1 flex-1 min-w-0">
-        {steps.map((s, i) => (
+      <PipelineSteps steps={steps} />
+      <div className="flex items-center gap-2 ml-auto shrink-0 pl-4" style={{ borderLeft: "1px solid var(--border)" }}>
+        <ProcessStatus
+          loopRunning={loopRunning}
+          errorAgents={agents.filter(a => a.state === "error" || a.state === "offline")}
+          onAgentsRefresh={onAgentsRefresh}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PipelineSteps({ steps }: { steps: Array<{ label: string; description: string; state: "completed" | "active" | "pending" | "error"; color: string }> }) {
+  const getIcon = (state: "completed" | "active" | "pending" | "error"): string => {
+    switch (state) {
+      case "completed": return "✓";
+      case "active": return "⟳";
+      case "error": return "⚠";
+      default: return "○";
+    }
+  };
+
+  const getStateColor = (step: { state: "completed" | "active" | "pending" | "error"; color: string }): string => {
+    if (step.state === "completed") return "var(--green)";
+    if (step.state === "active") return step.color;
+    if (step.state === "error") return "var(--red)";
+    return "var(--text-dim)";
+  };
+
+  return (
+    <div className="flex items-center gap-1 flex-1 min-w-0">
+      {steps.map((s, i) => (
           <div key={s.label} className="flex items-center group relative">
             {/* Step content */}
             <div
@@ -450,16 +540,6 @@ function PipelineBar({
           </div>
         ))}
       </div>
-
-      {/* Separator + Process status */}
-      <div className="flex items-center gap-2 ml-auto shrink-0 pl-4" style={{ borderLeft: "1px solid var(--border)" }}>
-        <ProcessStatus
-          loopRunning={loopRunning}
-          errorAgents={agents.filter(a => a.state === "error" || a.state === "offline")}
-          onAgentsRefresh={onAgentsRefresh}
-        />
-      </div>
-    </div>
   );
 }
 
@@ -549,6 +629,8 @@ export default function App() {
   const [directiveStatus, setDirectiveStatus] = useState({has_directive: false, directive_content: ""});
   const [loopActionError, setLoopActionError] = useState("");
   const [autoRelease, setAutoRelease] = useState(true);
+  const [flow01Mode, setFlow01Mode] = useState(() => localStorage.getItem("workflowMode") === "flow_01");
+  const [flow01Run, setFlow01Run] = useState<{ id?: number; status?: string; phase?: string; task?: string } | null>(null);
   const [sessionReloadKey, setSessionReloadKey] = useState(0);
   const [directiveClearKey, setDirectiveClearKey] = useState(0);
   const [apiError, setApiError] = useState<{ message: string; path: string } | null>(null);
@@ -576,6 +658,13 @@ export default function App() {
     const next = !autoRelease;
     setAutoRelease(next);
     await apiPut("/api/settings", { auto_release: next }).catch(() => {});
+  };
+  const toggleFlow01Mode = () => {
+    setFlow01Mode(prev => {
+      const next = !prev;
+      localStorage.setItem("workflowMode", next ? "flow_01" : "default");
+      return next;
+    });
   };
   const [leftOpen, setLeftOpen]     = useState(true);
   const [planOpen, setPlanOpen]     = useState(true);
@@ -657,6 +746,20 @@ export default function App() {
   }, []);
 
   const fetchLoop = useCallback(async () => {
+    if (flow01Mode) {
+      const data = await apiGet<{ runs: Array<{ id: number; status: string; phase?: string; task?: string }> }>("/api/workflows/flow_01/runs?limit=1").catch(() => ({ runs: [] }));
+      const latest = data.runs?.[0] || null;
+      setFlow01Run(latest);
+      const running = latest?.status === "running" || latest?.status === "cancelling";
+      setLoop({ running, pid: latest?.id ?? null });
+      if (running && !loopStartRef.current) {
+        loopStartRef.current = Date.now();
+      } else if (!running) {
+        loopStartRef.current = null;
+        setLoopElapsed(0);
+      }
+      return;
+    }
     const data = await apiGet<LoopStatus>("/api/loop/status").catch(() => ({ running: false, pid: null }));
     debugLog("[DEBUG-LAUNCH-PAD] [STEP 9] fetchLoop() poll hit: " + JSON.stringify(data), "frontend-poll");
     setLoop(data);
@@ -666,17 +769,17 @@ export default function App() {
       loopStartRef.current = null;
       setLoopElapsed(0);
     }
-  }, []);
+  }, [flow01Mode]);
 
   const fetchSuggestion = useCallback(async () => {
-    const data = await apiGet<Suggestion>("/api/suggestion").catch(() => null);
+    const data = await apiGet<Suggestion>(flow01Mode ? "/api/workflows/flow_01/suggestion" : "/api/suggestion").catch(() => null);
     setSuggestion(data && Object.keys(data).length > 0 ? data : null);
-  }, []);
+  }, [flow01Mode]);
 
   const fetchMessages = useCallback(async () => {
-    const data = await apiGet<ManagerMessage[]>("/api/manager-messages").catch(() => []);
+    const data = await apiGet<ManagerMessage[]>(flow01Mode ? "/api/workflows/flow_01/manager-messages" : "/api/manager-messages").catch(() => []);
     setMessages(data);
-  }, []);
+  }, [flow01Mode]);
 
   const fetchDirective = useCallback(async () => {
     const d = await apiGet<{ has_content: boolean }>("/api/user-input/has-content").catch(() => ({ has_content: false }));
@@ -714,6 +817,7 @@ export default function App() {
     fetchDirectiveStatus();
   };
   const hasStartContext = directiveStatus.has_directive;
+  const planApiPrefix = flow01Mode ? "/api/workflows/flow_01" : "/api";
 
   return (
     <ErrorBoundary>
@@ -735,12 +839,49 @@ export default function App() {
                 {loopActionError}
               </span>
             )}
+          {flow01Mode && flow01Run?.id && (
+            <span className="text-[10px] max-w-[180px] truncate" style={{ color: "var(--blue)" }} title={flow01Run.task || ""}>
+              flow_01 #{flow01Run.id} {flow01Run.status}
+            </span>
+          )}
+          <button
+            onClick={toggleFlow01Mode}
+            className="px-2.5 py-1 rounded text-[11px] font-medium transition-colors"
+            style={flow01Mode
+              ? { background: "var(--blue-bg)", color: "var(--blue)", border: "1px solid var(--blue-dim)" }
+              : { background: "var(--bg-panel)", color: "var(--text-secondary)", border: "1px solid var(--border)" }
+            }
+            title={flow01Mode ? "Using flow_01 fake DB and start-loop API" : "Using default Task Hounds loop"}
+          >{flow01Mode ? "flow_01" : "default"}</button>
           <button
             onClick={async () => {
               debugLog("[DEBUG-LAUNCH-PAD] [STEP 1] Start Loop button clicked", "frontend-click");
               debugLog("[DEBUG-LAUNCH-PAD] [STEP 1] loop.running=" + loop.running + " directiveStatus.has_directive=" + directiveStatus.has_directive, "frontend-click");
               setLoopActionError("");
               if (loop.running) {
+                if (flow01Mode) {
+                  try {
+                    const latestRun = flow01Run?.id
+                      ? flow01Run
+                      : (await apiGet<{ runs: Array<{ id: number; status: string; phase?: string; task?: string }> }>("/api/workflows/flow_01/runs?limit=1").catch(() => ({ runs: [] }))).runs?.[0];
+                    if (!latestRun?.id) {
+                      setLoopActionError("No flow_01 run found to cancel");
+                      fetchLoop();
+                      return;
+                    }
+                    const result = await apiPost<{ ok?: boolean; run_id?: number; status?: string }>(`/api/workflows/flow_01/runs/${latestRun.id}/cancel`, {
+                      reason: "ui_stop_button",
+                      stop_worker: true,
+                    });
+                    setFlow01Run({ ...latestRun, status: result.status || "cancelling" });
+                  } catch (err) {
+                    setLoopActionError(err instanceof Error ? err.message : "Cancel flow_01 run failed");
+                  }
+                  fetchLoop();
+                  fetchSuggestion();
+                  fetchMessages();
+                  return;
+                }
                 try {
                   debugLog("[DEBUG-LAUNCH-PAD] [STEP 1] Checking active work before stop...", "frontend-click");
                   const status = await apiGet<{ active_work: boolean; reason: string }>("/api/runtime/active-work");
@@ -757,10 +898,28 @@ export default function App() {
                 fetchLoop();
               } else {
                 try {
-                  debugLog("[DEBUG-LAUNCH-PAD] [STEP 2+3] Calling apiPost /api/loop/start ...", "frontend-click");
-                  const result = await apiPost<{ok?:boolean; started?:boolean; running?:boolean; pid?:number|null} | null>("/api/loop/start");
-                  debugLog("[DEBUG-LAUNCH-PAD] [STEP 2+3] apiPost /api/loop/start returned OK, result = " + JSON.stringify(result), "frontend-click");
+                  if (flow01Mode) {
+                    const settings = await apiGet<{ workspace_path?: string }>("/api/settings").catch((): { workspace_path?: string } => ({}));
+                    await apiPut("/api/workflows/flow_01/directive", {
+                      workspace_path: settings.workspace_path,
+                      directive: directiveStatus.directive_content,
+                    });
+                    const result = await apiPost<{ ok?: boolean; run_id?: number; status?: string; task?: string }>("/api/workflows/flow_01/start-loop", {
+                      workspace_path: settings.workspace_path,
+                      directive: directiveStatus.directive_content,
+                      suggested_task: "Start from the current Human Directive and create the first observable worker task.",
+                      emit_real_ui_signals: true,
+                      use_real_worker: true,
+                    });
+                    setFlow01Run({ id: result.run_id, status: result.status, task: result.task });
+                  } else {
+                    debugLog("[DEBUG-LAUNCH-PAD] [STEP 2+3] Calling apiPost /api/loop/start ...", "frontend-click");
+                    const result = await apiPost<{ok?:boolean; started?:boolean; running?:boolean; pid?:number|null} | null>("/api/loop/start");
+                    debugLog("[DEBUG-LAUNCH-PAD] [STEP 2+3] apiPost /api/loop/start returned OK, result = " + JSON.stringify(result), "frontend-click");
+                  }
                   fetchLoop();
+                  fetchSuggestion();
+                  fetchMessages();
                 } catch (err) {
                   debugLog("[DEBUG-LAUNCH-PAD] [STEP 2+3] apiPost /api/loop/start FAILED: " + (err instanceof Error ? err.message : String(err)), "frontend-click");
                   setLoopActionError(err instanceof Error ? err.message : "Start Loop failed");
@@ -831,7 +990,15 @@ export default function App() {
       </header>
 
       {/* Pipeline status bar */}
-      <PipelineBar agents={agents} suggestion={suggestion} loopRunning={loop.running} onAgentsRefresh={fetchAgents} />
+      <PipelineBar
+        agents={agents}
+        suggestion={suggestion}
+        loopRunning={loop.running}
+        flow01Phase={flow01Mode ? flow01Run?.phase : null}
+        flow01Status={flow01Mode ? flow01Run?.status : null}
+        flow01Task={flow01Mode ? flow01Run?.task : null}
+        onAgentsRefresh={fetchAgents}
+      />
 
       {/* Four-column layout (each rail is collapsible) */}
       <div className="flex-1 flex min-h-0">
@@ -871,7 +1038,7 @@ export default function App() {
 
         {planOpen ? (
           <div className="relative shrink-0 flex min-h-0">
-            <PlanningTodoRail clearKey={directiveClearKey} />
+            <PlanningTodoRail clearKey={directiveClearKey} apiPrefix={planApiPrefix} />
             <RailToggle side="left" onClick={() => closeRail("plan")} title="Collapse plan/todo rail">›</RailToggle>
           </div>
         ) : (

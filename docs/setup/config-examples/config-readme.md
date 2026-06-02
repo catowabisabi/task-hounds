@@ -68,6 +68,8 @@ config/
 | `OPENCODE_API_KEY` | OpenCode API key |
 | `HERMES_API_KEY` | Hermes API key |
 | `OPENCLAW_API_KEY` | OpenClaw API key |
+| `POWER_TEAMS_OPENCODE_TOPOLOGY` | OpenCode runtime topology. Default is `shared`; use `per_role` to give manager/worker/reviewer/chat separate serve processes. |
+| `POWER_TEAMS_OPENCODE_PORT` | Shared OpenCode port when using `shared` topology. |
 
 **使用方式：**
 ```bash
@@ -77,6 +79,7 @@ cp config/.env.example config/.env
 # 2. 編輯 config/.env，填入你的 API key
 OPENCODE_API_KEY=sk-xxxxx
 HERMES_API_KEY=xxx
+POWER_TEAMS_OPENCODE_TOPOLOGY=per_role
 ```
 
 ---

@@ -57,6 +57,7 @@ def init_db(path: Path = DB_PATH) -> None:
     """Initialize database with schema and migrations."""
     with connect(path) as db:
         db.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        _ensure_agent_progress_columns(db)
 
         migrations_dir = DATA_DIR / "migrations"
         if migrations_dir.exists():
@@ -69,12 +70,23 @@ def init_db(path: Path = DB_PATH) -> None:
         db.commit()
 
 
+def _ensure_agent_progress_columns(db: sqlite3.Connection) -> None:
+    existing = {row["name"] for row in db.execute("PRAGMA table_info(agent_registry)").fetchall()}
+    for name, ddl in {
+        "current_step": "ALTER TABLE agent_registry ADD COLUMN current_step TEXT",
+        "current_step_started_at": "ALTER TABLE agent_registry ADD COLUMN current_step_started_at TIMESTAMP",
+        "last_stream_at": "ALTER TABLE agent_registry ADD COLUMN last_stream_at TIMESTAMP",
+    }.items():
+        if name not in existing:
+            db.execute(ddl)
+
+
 def seed_default_agents(path: Path = DB_PATH) -> None:
     shared_host = os.environ.get("POWER_TEAMS_OPENCODE_HOST", "127.0.0.1")
     shared_port = int(os.environ.get("POWER_TEAMS_OPENCODE_PORT", "18765"))
 
     def role_agent(role: str) -> str:
-        return os.environ.get(f"POWER_TEAMS_{role.upper()}_OPENCODE_AGENT", "build")
+        return os.environ.get(f"POWER_TEAMS_{role.upper()}_OPENCODE_AGENT", "Sisyphus - ultraworker")
 
     def role_model(role: str) -> str | None:
         return os.environ.get(f"POWER_TEAMS_{role.upper()}_MODEL") or os.environ.get("POWER_TEAMS_DEFAULT_MODEL")

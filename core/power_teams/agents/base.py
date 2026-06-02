@@ -21,8 +21,10 @@ RUNTIME_DIR = os.environ.get("POWER_TEAMS_RUNTIME_DIR") or "core/runtime"
 ROOT = Path(__file__).resolve().parents[3]
 RUNTIME_PATH = ROOT / RUNTIME_DIR
 
-DEFAULT_AGENT_FALLBACKS = tuple(os.environ.get("POWER_TEAMS_AGENT_FALLBACKS", "sisyphus-junior,build").split(","))
-DEFAULT_MODEL_FALLBACKS = tuple(os.environ.get("POWER_TEAMS_MODEL_FALLBACKS", "minimax-coding-plan/MiniMax-M2.7").split(","))
+DEFAULT_AGENT_FALLBACKS = tuple(
+    item.strip() for item in os.environ.get("POWER_TEAMS_AGENT_FALLBACKS", "").split(",") if item.strip()
+)
+DEFAULT_MODEL_FALLBACKS = tuple(os.environ.get("POWER_TEAMS_MODEL_FALLBACKS", "bailian-coding-plan/MiniMax-M2.5").split(","))
 
 try:
     import sys
@@ -91,13 +93,17 @@ def init_runtime_files() -> None:
 
 def files_dir() -> Path:
     """Per-session runtime folder, falling back to the legacy shared dir
-    when no project session is active."""
+    when no project session is active.
+
+    Matches the path logic used by active_agent_stream_path() in api/server.py
+    so that stream files written by send_to_agent are readable by the API."""
+    # Use BOM-tolerant reading to match read_settings() in server.py
     sid = None
     try:
         if SETTINGS_FILE.exists():
-            sid = json.loads(SETTINGS_FILE.read_text(encoding="utf-8")).get("active_project_session")
+            sid = json.loads(SETTINGS_FILE.read_text(encoding="utf-8-sig")).get("active_project_session")
     except Exception:
-        sid = None
+        pass
     if sid:
         d = SESSIONS_DIR / sid / "agent_files"
         d.mkdir(parents=True, exist_ok=True)
@@ -264,9 +270,10 @@ JSON format (valid JSON only, no markdown fences):
 {
   "items": [
     {
-      "id": "existing todo id when available",
+      "id": null,
       "content": "short stable todo title",
-      "status": "pending|in_progress|completed|blocked",
+      "status": "pending",
+      "priority": "medium",
       "position": 0
     }
   ]
@@ -279,6 +286,9 @@ Rules:
   where the top-level text matches.
 - Always emit the FULL current todo JSON in TODO_UPDATE_JSON. Prefer existing
   todo IDs from the current todo context when available.
+- Allowed JSON status values are exactly: "pending", "in_progress",
+  "completed", or "blocked".
+- If there is no existing todo id, use JSON null, not a made-up string.
 - Top-level items must be short (under ~80 chars) and unique within the list.
 - Update status markers based on actual worker progress, not aspirations.
 - Do NOT skip the <TODO_LIST> even if the list is unchanged — emit it again.
@@ -474,13 +484,15 @@ def _release_manager_lock() -> None:
 
 def opencode_env() -> dict[str, str]:
     env = os.environ.copy()
-    OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
-    OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
-    OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    env.pop("OPENCODE_HOME", None)
-    env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
-    env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
-    env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
+    from power_teams.runtime.opencode_supervisor import opencode_isolated_config_enabled
+    if opencode_isolated_config_enabled():
+        OPENCODE_CONFIG_HOME.mkdir(parents=True, exist_ok=True)
+        OPENCODE_DATA_HOME.mkdir(parents=True, exist_ok=True)
+        OPENCODE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        env.pop("OPENCODE_HOME", None)
+        env["XDG_CONFIG_HOME"] = str(OPENCODE_CONFIG_HOME)
+        env["XDG_DATA_HOME"] = str(OPENCODE_DATA_HOME)
+        env["OPENCODE_CONFIG_DIR"] = str(OPENCODE_CONFIG_DIR)
     return env
 
 
@@ -595,82 +607,23 @@ def _ping_opencode_port(host: str, port: int, timeout: float = 2.0) -> bool:
 
 
 def _restart_opencode_server(agent_name: str, host: str, port: int) -> bool:
-    if not _is_opencode_process(host, port):
-        log(f"{agent_name}: port {host}:{port} not owned by opencode — skipping auto-restart (external server?)")
-        return False
-    managed_pid = _managed_opencode_pid_for_port(host, port)
-    if managed_pid:
-        log(f"{agent_name}: stopping managed opencode pid={managed_pid} on {host}:{port} before restart")
-        try:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/PID", str(managed_pid), "/T", "/F"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                )
-            else:
-                os.kill(managed_pid, 15)
-            time.sleep(1)
-        except Exception as exc:
-            log(f"{agent_name}: failed stopping managed opencode pid={managed_pid}: {exc}")
-    else:
-        log(f"{agent_name}: port {host}:{port} is opencode but not a managed running DB instance — skipping auto-restart")
-        return False
-    log(f"{agent_name}: opencode server not responding on {host}:{port} — attempting restart")
-    bin_path = opencode_bin()
-    if bin_path == "opencode":
-        log(f"{agent_name}: opencode binary not found, cannot restart server")
-        return False
-
-    from power_teams.runtime.opencode_supervisor import (
-        build_opencode_serve_args as _oc_serve_args,
-        opencode_env as _oc_env,
-        opencode_debug_console_enabled as _oc_debug_console,
-        opencode_serve_creation_flags as _oc_serve_flags,
-        LOG_DIR as _OC_LOG_DIR,
-    )
-    _OC_LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = _OC_LOG_DIR / f"{agent_name}_restart.log"
     try:
-        log_f = log_path.open("a", encoding="utf-8", buffering=1)
-        log_f.write(f"\n[restart] restarting {agent_name} on {host}:{port}\n")
-        debug_console = _oc_debug_console()
-        serve_args = _oc_serve_args(bin_path, port, debug_console=debug_console)
-        proc = subprocess.Popen(
-            serve_args,
-            cwd=str(ROOT),
-            env=_oc_env(),
-            stdout=None if debug_console else subprocess.PIPE,
-            stderr=None if debug_console else subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            stdin=subprocess.DEVNULL,
-            creationflags=_oc_serve_flags(debug_console=debug_console),
-        )
-        if debug_console:
-            log_f.write("[restart] debug console enabled; OpenCode logs are visible in the serve shell\n")
-            log_f.close()
-        else:
-            threading.Thread(
-                target=lambda: [log_f.write(line) for line in (proc.stdout or [])],
-                daemon=True,
-            ).start()
-        log(f"{agent_name}: restart process pid={proc.pid}, waiting up to 30s for health")
-    except Exception as exc:
-        log(f"{agent_name}: failed to launch restart process: {exc}")
-        return False
+        from power_teams.runtime.opencode_lifecycle import OpenCodeLifecycleManager
 
-    deadline = time.monotonic() + 30
-    while time.monotonic() < deadline:
-        if _ping_opencode_port(host, port, timeout=1.0):
-            log(f"{agent_name}: opencode server back up on port {port}")
+        result = OpenCodeLifecycleManager(db_path=DB_PATH).reconcile_runtime(
+            start_if_missing=True,
+            restart_unowned=False,
+        )
+        selected = result.get("selected") or {}
+        if selected:
+            log(f"{agent_name}: lifecycle selected OpenCode server {selected.get('host')}:{selected.get('port')}")
             return True
-        time.sleep(1)
-    log(f"{agent_name}: opencode server did NOT become healthy within 30s after restart")
-    return False
+        started = result.get("started") or {}
+        log(f"{agent_name}: lifecycle could not restart OpenCode server: {started.get('error') or result}")
+        return False
+    except Exception as exc:
+        log(f"{agent_name}: lifecycle restart failed: {exc}")
+        return False
 
 
 def is_insufficient_balance_error(error_msg: str) -> bool:
@@ -817,15 +770,13 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
     when that happens we read the completed assistant message from the server.
     """
     agent_row = dict(get_agent(agent_name))
-    try:
-        binding = get_agent_binding(agent_name, path=DB_PATH)
-        if binding:
-            agent_row["host"] = binding["host"] or agent_row["host"]
-            agent_row["port"] = int(binding["port"] or agent_row["port"])
-            agent_row["model"] = binding["model"]
-            agent_row["opencode_agent"] = binding["opencode_agent"] or agent_row["opencode_agent"]
-    except Exception:
-        pass
+    binding = get_agent_binding(agent_name, path=DB_PATH)
+    if not binding:
+        raise RuntimeError(f"{agent_name} role is not bound to an OpenCode runtime")
+    agent_row["host"] = binding["host"] or agent_row["host"]
+    agent_row["port"] = int(binding["port"] or agent_row["port"])
+    agent_row["model"] = binding["model"] or agent_row.get("model")
+    agent_row["opencode_agent"] = binding["opencode_agent"] or agent_row.get("opencode_agent") or "build"
     cwd = cwd or get_active_workspace_path() or str(ROOT)
     cwd_path = Path(cwd)
     if not cwd_path.exists():
@@ -901,39 +852,44 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
             _clear_stored_session()
             existing_session = None
 
-    def _available_agents_map() -> dict[str, str]:
+    def _available_agents() -> list[dict]:
         try:
             from power_teams.runtime.opencode_lifecycle import get_cached_available_agents
-            return {
-                str(a.get("id") or a.get("name") or "").strip(): str(a.get("mode") or "")
-                for a in get_cached_available_agents()
-            }
+            return list(get_cached_available_agents())
         except Exception:
-            return {}
+            return []
+
+    def _preferred_primary_agent(agents: list[dict]) -> str | None:
+        try:
+            from power_teams.runtime.opencode_lifecycle import preferred_primary_agent
+            return preferred_primary_agent(agents)
+        except Exception:
+            return None
 
     def _resolve_opencode_agent(fallback_index: int = -1) -> str | None:
         user_value = str(agent_row.get("opencode_agent") or "").strip()
-        agents_map = _available_agents_map()
+        agents = _available_agents()
+        agents_map = {
+            str(a.get("id") or a.get("name") or "").strip(): str(a.get("mode") or "")
+            for a in agents
+        }
+        primary_agent = _preferred_primary_agent(agents)
 
         if fallback_index < 0:
             if user_value and user_value.lower() not in {"", "default"}:
-                mode = agents_map.get(user_value, "")
-                if mode != "subagent":
-                    return user_value
-                log(f"{agent_name}: opencode_agent='{user_value}' is subagent, skipping to fallback chain")
+                if agents_map and user_value not in agents_map:
+                    log(f"{agent_name}: opencode_agent='{user_value}' not found; falling back to primary agent")
+                else:
+                    mode = agents_map.get(user_value, "")
+                    if mode != "subagent":
+                        return user_value
+                    log(f"{agent_name}: opencode_agent='{user_value}' is subagent; falling back to primary agent")
 
-        for i, fallback in enumerate(DEFAULT_AGENT_FALLBACKS):
-            if fallback_index >= 0 and i < fallback_index:
-                continue
-            mode = agents_map.get(fallback, "")
-            if not agents_map or mode == "primary":
+        for fallback in DEFAULT_AGENT_FALLBACKS:
+            if not agents_map or agents_map.get(fallback) == "primary":
                 return fallback
 
-        if agents_map:
-            for name, mode in agents_map.items():
-                if mode == "primary":
-                    return name
-        return None
+        return primary_agent
 
     def _resolve_model(fallback_index: int = -1) -> str | None:
         user_value = str(agent_row.get("model") or "").strip()
@@ -953,7 +909,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
     resolved_agent = _resolve_opencode_agent(current_agent_fallback)
     resolved_model = _resolve_model(current_model_fallback)
 
-    update_agent(agent_name, state="busy", last_seen=utc_now())
+    update_agent(agent_name, state="busy", current_step="preparing prompt", current_step_started_at=utc_now(), last_stream_at=utc_now(), last_seen=utc_now())
     resolved_agent_for_log = resolved_agent or "<opencode default>"
     resolved_model_for_log = resolved_model or "<opencode default>"
     session_display = existing_session[:16] if existing_session else "<new>"
@@ -974,11 +930,12 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
         ]
         if agent:
             cmd += ["--agent", agent]
-        #if model:
-            #cmd += ["--model", model]
+        if model:
+            cmd += ["--model", model]
         if session_id:
             cmd += ["--session", session_id]
         cmd.append(prompt)
+        print(f"發出Agent: {cmd}")
         return cmd
 
     _oc_host = agent_row["host"]
@@ -1013,6 +970,14 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
         captured_sid: str | None = None
         start = time.monotonic()
         running = [True]
+        update_agent(
+            agent_name,
+            state="busy",
+            current_step="starting opencode run",
+            current_step_started_at=utc_now(),
+            last_stream_at=utc_now(),
+            last_seen=utc_now(),
+        )
 
         def _heartbeat():
             prev = 0
@@ -1023,6 +988,12 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                     log(f"{agent_name}: {elapsed}s elapsed (deep thinking in progress...)")
                     append_text(stream_file,
                                 json.dumps({"t": "sys", "msg": f"{elapsed}s elapsed", "kind": "elapsed"}) + "\n")
+                    update_agent(
+                        agent_name,
+                        state="busy",
+                        current_step="waiting for OpenCode output",
+                        last_seen=utc_now(),
+                    )
                 time.sleep(5)
 
         def _permission_watcher():
@@ -1134,6 +1105,13 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
 
             for raw in proc.stdout:
                 last_output_time[0] = time.monotonic()
+                update_agent(
+                    agent_name,
+                    state="busy",
+                    current_step="streaming OpenCode output",
+                    last_stream_at=utc_now(),
+                    last_seen=utc_now(),
+                )
                 raw = raw.rstrip("\n")
                 if not raw:
                     continue
@@ -1435,7 +1413,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                     log(f"{agent_name}: wrote back resolved model '{resolved_model}' to DB")
                 except Exception:
                     pass
-            update_agent(agent_name, state="idle", last_seen=utc_now())
+            update_agent(agent_name, state="idle", current_step=None, current_step_started_at=None, last_seen=utc_now())
             return result
 
         except Exception as exc:

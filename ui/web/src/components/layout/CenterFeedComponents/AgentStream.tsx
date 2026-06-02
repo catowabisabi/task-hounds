@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useStream } from "../../../hooks/useStream";
 import { StateBadge } from "../../ui/Badge";
 import { StreamView } from "../../ui/StreamView";
@@ -11,9 +12,20 @@ export function AgentStream({ agent, onClear, onStop }: {
   onStop: () => void;
 }) {
   const content = useStream(agent.name);
+  const errorText = agent.last_error?.trim();
+  const errorKey = errorText ? `${agent.name}:${errorText}` : "";
+  const [hiddenErrorKey, setHiddenErrorKey] = useState("");
+  const [errorFading, setErrorFading] = useState(false);
 
   const handleClear = async () => {
     await apiPost(`/api/stream/${agent.name}/clear`);
+    onClear();
+  };
+
+  const handleClearError = async () => {
+    if (!errorText) return;
+    setHiddenErrorKey(errorKey);
+    await apiPost(`/api/agents/${agent.name}/clear-error`).catch(() => {});
     onClear();
   };
 
@@ -30,7 +42,31 @@ export function AgentStream({ agent, onClear, onStop }: {
 
   const isCrashed = agent.state === "error";
   const isBusy = agent.state === "busy";
-  const errorText = agent.last_error?.trim();
+  const showErrorText = Boolean(errorText && hiddenErrorKey !== errorKey);
+  const [nowMs, setNowMs] = useState(Date.now());
+  const stepStartedMs = agent.current_step_started_at ? Date.parse(agent.current_step_started_at) : NaN;
+  const lastStreamMs = agent.last_stream_at ? Date.parse(agent.last_stream_at) : NaN;
+  const stepElapsed = Number.isFinite(stepStartedMs) ? Math.max(0, Math.floor((nowMs - stepStartedMs) / 1000)) : null;
+  const silentElapsed = Number.isFinite(lastStreamMs) ? Math.max(0, Math.floor((nowMs - lastStreamMs) / 1000)) : null;
+  const stepLabel = agent.current_step?.trim() || "working";
+  const maybeStuck = isBusy && silentElapsed !== null && silentElapsed >= 180;
+
+  useEffect(() => {
+    if (!isBusy) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [isBusy]);
+
+  useEffect(() => {
+    if (!errorKey || hiddenErrorKey === errorKey) return;
+    setErrorFading(false);
+    const fadeTimer = window.setTimeout(() => setErrorFading(true), 10000);
+    const hideTimer = window.setTimeout(() => setHiddenErrorKey(errorKey), 10400);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, [errorKey, hiddenErrorKey]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -40,7 +76,10 @@ export function AgentStream({ agent, onClear, onStop }: {
       >
         <StateBadge state={agent.state as "idle" | "busy" | "waiting" | "error" | "offline"} />
         {isBusy && (
-          <span className="text-[11px] animate-pulse" style={{ color: "var(--amber)" }}>working...</span>
+          <span className="text-[11px] animate-pulse" style={{ color: maybeStuck ? "var(--red)" : "var(--amber)" }}>
+            {stepLabel}{stepElapsed !== null ? ` · ${stepElapsed}s` : ""}
+            {silentElapsed !== null ? ` · last output ${silentElapsed}s ago` : ""}
+          </span>
         )}
         {isCrashed && (
           <span className="text-[11px]" style={{ color: "var(--red)" }}>
@@ -75,13 +114,27 @@ export function AgentStream({ agent, onClear, onStop }: {
         </div>
       </div>
 
-      {errorText && (
+      {showErrorText && (
         <div
-          className="px-4 py-2 text-[11px] leading-relaxed"
-          style={{ background: "var(--red-bg)", color: "var(--red)", borderBottom: "1px solid var(--red-dim)" }}
+          className="flex items-start gap-3 px-4 py-2 text-[11px] leading-relaxed transition-opacity duration-500"
+          style={{
+            background: "var(--red-bg)",
+            color: "var(--red)",
+            borderBottom: "1px solid var(--red-dim)",
+            opacity: errorFading ? 0 : 1,
+          }}
           title={errorText}
         >
-          {errorText}
+          <span className="min-w-0 flex-1">{errorText}</span>
+          <button
+            onClick={handleClearError}
+            className="h-5 w-5 shrink-0 rounded leading-none transition-colors duration-200"
+            style={{ color: "var(--red)", border: "1px solid var(--red-dim)", opacity: errorFading ? 0.45 : 1 }}
+            title="Clear error"
+            aria-label="Clear error"
+          >
+            ×
+          </button>
         </div>
       )}
 

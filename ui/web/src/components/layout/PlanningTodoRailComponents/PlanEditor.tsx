@@ -45,7 +45,7 @@ export function PlanEditor({ plan, planDraft, planSaving, planGlowKey, onDraftCh
   );
 }
 
-export function usePlanEditor(clearKey: number) {
+export function usePlanEditor(clearKey: number, apiPrefix = "/api") {
   const [plan, setPlan] = useState<Plan>({ content: "", updated_by: null, updated_at: null });
   const [planDraft, setPlanDraft] = useState("");
   const [planSaving, setPlanSaving] = useState(false);
@@ -55,7 +55,7 @@ export function usePlanEditor(clearKey: number) {
   const prevPlanRef = useRef<string>("");
 
   const loadPlan = useCallback(async () => {
-    const p = await apiGet<Plan>("/api/plan").catch(() => ({ content: "", updated_by: null, updated_at: null }));
+    const p = await apiGet<Plan>(`${apiPrefix}/plan`).catch(() => ({ content: "", updated_by: null, updated_at: null }));
     if (p.content !== prevPlanRef.current && p.content !== planDraft) {
       setPlanGlowKey(k => k + 1);
     }
@@ -68,7 +68,7 @@ export function usePlanEditor(clearKey: number) {
       setPlanDraft(p.content);
       lastSavedRef.current = p.content;
     }
-  }, [planDraft]);
+  }, [apiPrefix, planDraft]);
 
   useEffect(() => { loadPlan(); }, [loadPlan, clearKey]);
 
@@ -77,12 +77,12 @@ export function usePlanEditor(clearKey: number) {
     if (planDraft === lastSavedRef.current) return;
     saveTimerRef.current = setTimeout(async () => {
       setPlanSaving(true);
-      await apiPut("/api/plan", { content: planDraft, updated_by: "human" }).catch(() => {});
+      await apiPut(`${apiPrefix}/plan`, { content: planDraft, updated_by: "human" }).catch(() => {});
       lastSavedRef.current = planDraft;
       setPlanSaving(false);
     }, 800);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [planDraft]);
+  }, [apiPrefix, planDraft]);
 
   return { plan, planDraft, setPlanDraft, planSaving, planGlowKey, loadPlan };
 }
