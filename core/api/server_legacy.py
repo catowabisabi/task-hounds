@@ -244,7 +244,8 @@ def get_db_agents():
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             "SELECT id, name, role, host, port, model, opencode_agent, "
-            "state, task_complete, last_seen, last_error, session_id, "
+            "state, task_complete, current_step, step_source, current_step_started_at, "
+            "last_stream_at, last_seen, last_error, session_id, "
             "COALESCE(backend_type,'opencode') as backend_type, backend_config_json "
             "FROM agent_registry ORDER BY role, name"
         ).fetchall()
@@ -329,10 +330,14 @@ def get_suggestion_data():
 
 def get_unscoped_suggestions_data():
     try:
-        if get_active_project_session_id() != "legacy":
-            return []
         rows = _db().list_unscoped_active_suggestions(path=DB_PATH)
-        return [dict(row) for row in rows]
+        data = []
+        for row in rows:
+            item = dict(row)
+            item["scope_warning"] = "historical_unscoped"
+            item["cleanup_only"] = True
+            data.append(item)
+        return data
     except Exception as e:
         return {"error": str(e)}
 
@@ -522,7 +527,7 @@ def is_opencode_http_reachable(host: str, port: int, timeout: float = 2.0) -> tu
 
 def update_agent_state(name: str, state: str = None, task_complete=None, **extra_fields) -> None:
     import sqlite3
-    allowed_extra = {"current_step", "current_step_started_at", "last_stream_at", "last_error", "last_seen"}
+    allowed_extra = {"current_step", "step_source", "current_step_started_at", "last_stream_at", "last_error", "last_seen"}
     fields = []
     values = []
     if state is not None:
@@ -2071,8 +2076,13 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(400)
             return
         try:
-            version = _db().upsert_handoff(updated_by="human", path=DB_PATH, **payload)
-            self._json({"ok": True, "version": version})
+            session_id = get_active_project_session_id()
+            scoped_session_id = None if session_id == "legacy" else session_id
+            version = _db().upsert_handoff(updated_by="human", path=DB_PATH, session_id=scoped_session_id, **payload)
+            data = {"ok": True, "version": version, "session_id": scoped_session_id}
+            if scoped_session_id is None:
+                data["warning"] = "unscoped_handoff_written_no_active_project_session"
+            self._json(data)
         except Exception as e:
             self._json({"ok": False, "error": str(e)}, 500)
 

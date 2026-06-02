@@ -103,6 +103,9 @@ export function SuggestionPanel({ suggestion, onAction }: SuggestionPanelProps) 
           <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-dim)" }}>
             Unscoped Active Suggestions
           </p>
+          <p className="text-[10px] leading-snug" style={{ color: "var(--amber)" }}>
+            Historical unscoped rows are shown only for cleanup; they are not part of the active project queue.
+          </p>
           {unscoped.slice(0, 3).map(item => {
             const status = item.status ?? "released";
             const itemSc = SC[status] ?? SC.paused;

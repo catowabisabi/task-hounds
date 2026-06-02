@@ -18,7 +18,11 @@ from power_teams.agents.base import (
     log,
     read_text,
     send_to_agent,
+    update_agent,
+    utc_now,
     worker_report_path,
+    worker_status_path,
+    write_text,
     ROOT,
     DB_PATH,
 )
@@ -116,6 +120,15 @@ def run_reviewer_session(suggestion_id: int) -> None:
     try:
         session_id = create_reviewer_session(suggestion_id)
         update_reviewer_session(session_id, status="running")
+        update_agent(
+            "reviewer",
+            state="busy",
+            current_step=f"reviewing suggestion #{suggestion_id}",
+            step_source="reviewer",
+            current_step_started_at=utc_now(),
+            last_stream_at=utc_now(),
+            last_seen=utc_now(),
+        )
         log(f"Reviewer session #{session_id} started for suggestion #{suggestion_id}")
 
         with connect() as db:
@@ -166,6 +179,9 @@ def run_reviewer_session(suggestion_id: int) -> None:
         )
 
         log(f"Reviewer session #{session_id} completed successfully")
+        update_agent("reviewer", state="idle", current_step=None, step_source=None, current_step_started_at=None, last_seen=utc_now())
+        write_text(worker_status_path(), "idle\n")
+        update_agent("worker", state="idle", current_step=None, step_source=None, current_step_started_at=None, last_seen=utc_now())
 
         # If significant issues found, create a follow-up suggestion
         if usability_issues and usability_issues.lower() not in ("none identified", "n/a", ""):
@@ -187,6 +203,9 @@ def run_reviewer_session(suggestion_id: int) -> None:
         log(f"Reviewer session failed: {exc}")
         if session_id:
             update_reviewer_session(session_id, status="failed")
+        update_agent("reviewer", state="error", current_step=None, step_source=None, current_step_started_at=None, last_error=str(exc), last_seen=utc_now())
+        write_text(worker_status_path(), "idle\n")
+        update_agent("worker", state="idle", current_step=None, step_source=None, current_step_started_at=None, last_seen=utc_now())
 
 
 def _trigger_reviewer_async(suggestion_id: int) -> None:

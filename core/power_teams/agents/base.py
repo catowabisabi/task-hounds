@@ -909,7 +909,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
     resolved_agent = _resolve_opencode_agent(current_agent_fallback)
     resolved_model = _resolve_model(current_model_fallback)
 
-    update_agent(agent_name, state="busy", current_step="preparing prompt", current_step_started_at=utc_now(), last_stream_at=utc_now(), last_seen=utc_now())
+    update_agent(agent_name, state="busy", current_step="preparing prompt", step_source="opencode", current_step_started_at=utc_now(), last_stream_at=utc_now(), last_seen=utc_now())
     resolved_agent_for_log = resolved_agent or "<opencode default>"
     resolved_model_for_log = resolved_model or "<opencode default>"
     session_display = existing_session[:16] if existing_session else "<new>"
@@ -974,6 +974,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
             agent_name,
             state="busy",
             current_step="starting opencode run",
+            step_source="opencode",
             current_step_started_at=utc_now(),
             last_stream_at=utc_now(),
             last_seen=utc_now(),
@@ -992,6 +993,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                         agent_name,
                         state="busy",
                         current_step="waiting for OpenCode output",
+                        step_source="opencode",
                         last_seen=utc_now(),
                     )
                 time.sleep(5)
@@ -1109,6 +1111,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                     agent_name,
                     state="busy",
                     current_step="streaming OpenCode output",
+                    step_source="opencode",
                     last_stream_at=utc_now(),
                     last_seen=utc_now(),
                 )
@@ -1413,7 +1416,7 @@ def send_to_agent(agent_name: str, prompt: str, max_retries: int = 1, cwd: str |
                     log(f"{agent_name}: wrote back resolved model '{resolved_model}' to DB")
                 except Exception:
                     pass
-            update_agent(agent_name, state="idle", current_step=None, current_step_started_at=None, last_seen=utc_now())
+            update_agent(agent_name, state="idle", current_step=None, step_source=None, current_step_started_at=None, last_seen=utc_now())
             return result
 
         except Exception as exc:

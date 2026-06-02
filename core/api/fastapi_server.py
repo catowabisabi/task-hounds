@@ -241,6 +241,7 @@ class Agent(BaseModel):
     state: str
     task_complete: int = 0
     current_step: str | None = None
+    step_source: str | None = None
     current_step_started_at: str | None = None
     last_stream_at: str | None = None
     last_seen: str | None = None
@@ -276,6 +277,8 @@ class Suggestion(BaseModel):
     status: str | None = None
     queue_status: str | None = None
     status_label: str | None = None
+    scope_warning: str | None = None
+    cleanup_only: bool | None = None
     verification: str | None = None
     related_files: list[str] | None = None
     created_at: str | None = None
@@ -963,12 +966,12 @@ def get_suggestion():
 @app.get("/api/suggestions/unscoped", response_model=list[Suggestion], tags=["suggestion"])
 def get_unscoped_suggestions():
     try:
-        if get_active_project_session_id() != "legacy":
-            return []
         rows = _db().list_unscoped_active_suggestions(path=DB_PATH)
         data = []
         for row in rows:
             item = dict(row)
+            item["scope_warning"] = "historical_unscoped"
+            item["cleanup_only"] = True
             status = item.get("status") or "pending"
             item["queue_status"] = {
                 "pending": "queued_for_manager",
@@ -1354,15 +1357,17 @@ def get_handoff_versions():
 def update_handoff(body: HandoffUpdate):
     try:
         session_id = get_active_project_session_id()
-        if session_id == "legacy":
-            raise HTTPException(status_code=409, detail="handoff update requires an active project session")
+        scoped_session_id = None if session_id == "legacy" else session_id
         version = _db().upsert_handoff(
             updated_by="human",
             path=DB_PATH,
-            session_id=session_id,
+            session_id=scoped_session_id,
             **body.model_dump(exclude_none=True),
         )
-        return {"ok": True, "version": version}
+        response = {"ok": True, "version": version, "session_id": scoped_session_id}
+        if scoped_session_id is None:
+            response["warning"] = "unscoped_handoff_written_no_active_project_session"
+        return response
     except HTTPException:
         raise
     except Exception as e:

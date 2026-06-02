@@ -146,11 +146,12 @@ class FastApiServiceSignalAdapter:
         if state == "busy":
             kwargs.update(
                 current_step=current_step or f"{role} working",
+                step_source="flow_01",
                 current_step_started_at=utc_now(),
                 last_stream_at=utc_now(),
             )
         elif state == "idle":
-            kwargs.update(current_step=None, current_step_started_at=None)
+            kwargs.update(current_step=None, step_source=None, current_step_started_at=None)
         self.services.agents.update_state(role, **kwargs)
 
     def _append_stream(self, role: str, payload: dict) -> None:

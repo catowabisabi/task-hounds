@@ -223,6 +223,7 @@ CREATE TABLE IF NOT EXISTS agent_registry (
     relations_json  TEXT,
     last_error      TEXT,
     current_step    TEXT,
+    step_source     TEXT,
     current_step_started_at TIMESTAMP,
     last_stream_at  TIMESTAMP,
     last_seen       TIMESTAMP,

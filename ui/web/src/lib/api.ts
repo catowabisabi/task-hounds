@@ -1,6 +1,6 @@
 const FASTAPI_BASE = "http://127.0.0.1:8766";
 const FLOW_TEST_BASE = "http://127.0.0.1:8866";
-const LEGACY_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8765";
+const LEGACY_BASE = "http://127.0.0.1:8765";
 
 let _base: string | null = null;
 let _basePromise: Promise<string> | null = null;
@@ -39,7 +39,7 @@ async function resolveBase(): Promise<string> {
       return currentOrigin;
     }
 
-    for (const candidate of [import.meta.env.VITE_API_BASE, FASTAPI_BASE, FLOW_TEST_BASE].filter(Boolean) as string[]) {
+    for (const candidate of [import.meta.env.VITE_API_BASE, FASTAPI_BASE, LEGACY_BASE, FLOW_TEST_BASE].filter(Boolean) as string[]) {
       if (currentOrigin !== candidate) {
         for (let attempt = 0; attempt < 3; attempt++) {
           if (await tryPing(candidate)) {
@@ -178,6 +178,7 @@ export interface Agent {
   task_complete: number;
   last_error: string | null;
   current_step?: string | null;
+  step_source?: string | null;
   current_step_started_at?: string | null;
   last_stream_at?: string | null;
   last_seen: string | null;
@@ -197,6 +198,8 @@ export interface Suggestion {
   status?: string;
   queue_status?: string;
   status_label?: string;
+  scope_warning?: string;
+  cleanup_only?: boolean;
   verification?: string;
   related_files?: string[];
   created_at?: string;

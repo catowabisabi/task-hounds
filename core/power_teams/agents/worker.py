@@ -1,8 +1,9 @@
 """
-worker.py — Worker agent cycle.
+Worker agent cycle.
 
 The Worker reads the active suggestion from SQLite, executes the task via
-opencode, writes a report, then triggers the reviewer in a background thread.
+OpenCode, writes a report, then triggers the reviewer only when concrete work
+was reported.
 """
 from __future__ import annotations
 
@@ -12,7 +13,6 @@ from power_teams.agents.base import (
     get_active_session_id,
     handoff_summary,
     log,
-    read_text,
     send_to_agent,
     update_agent,
     utc_now,
@@ -22,6 +22,27 @@ from power_teams.agents.base import (
 )
 from power_teams.db import add_worker_report, update_suggestion
 from power_teams.db import connect, DB_PATH
+
+
+def _report_claims_file_change(report: str) -> bool:
+    text = (report or "").lower()
+    if "files created or modified" in text or "files changed" in text or "modified files" in text:
+        return True
+    return any(token in text for token in ("apply_patch", "created file", "updated file", "modified ", "wrote "))
+
+
+def _should_trigger_reviewer(suggestion, report: str) -> bool:
+    text = "\n".join(
+        str(suggestion[key] or "")
+        for key in ("content", "verification", "human_comment")
+        if key in suggestion.keys()
+    ).lower()
+    report_text = (report or "").lower()
+    if "[skip_reviewer]" in text or "[no-review]" in text or "skip reviewer" in text:
+        return False
+    if "blocked" in report_text and not _report_claims_file_change(report):
+        return False
+    return _report_claims_file_change(report)
 
 
 def _current_plan_todo_context(session_id: str | None) -> str:
@@ -62,7 +83,7 @@ def worker_cycle() -> None:
     suggestion = _get_active_suggestion()
 
     if suggestion is None or suggestion["status"] != "released":
-        update_agent("worker", state="idle", current_step=None, current_step_started_at=None, last_seen=utc_now())
+        update_agent("worker", state="idle", current_step=None, step_source=None, current_step_started_at=None, last_seen=utc_now())
         write_text(worker_status_path(), "idle\n")
         return
 
@@ -75,7 +96,15 @@ def worker_cycle() -> None:
 
     log(f"Worker: starting on suggestion #{suggestion['id']}")
     write_text(worker_status_path(), "busy\n")
-    update_agent("worker", state="busy", current_step="building worker prompt", current_step_started_at=utc_now(), last_stream_at=utc_now(), last_seen=utc_now())
+    update_agent(
+        "worker",
+        state="busy",
+        current_step="building worker prompt",
+        step_source="worker",
+        current_step_started_at=utc_now(),
+        last_stream_at=utc_now(),
+        last_seen=utc_now(),
+    )
 
     prompt = (
         "You are the Worker agent. Execute the assigned task precisely.\n\n"
@@ -116,16 +145,29 @@ def worker_cycle() -> None:
         add_worker_report(session_id, report)
     write_text(worker_report_path(), f"# Worker Report\n\n{report}\n")
 
-    update_suggestion(suggestion["id"], status="worker_done")
+    if _should_trigger_reviewer(suggestion, report):
+        update_suggestion(suggestion["id"], status="worker_done")
+        try:
+            from power_teams.agents.reviewer import _trigger_reviewer_async
+            _trigger_reviewer_async(suggestion["id"])
+            write_text(worker_status_path(), "waiting_reviewer\n")
+            update_agent(
+                "worker",
+                state="waiting",
+                current_step="waiting for reviewer",
+                step_source="worker",
+                current_step_started_at=utc_now(),
+                last_seen=utc_now(),
+            )
+            log(f"Reviewer triggered for suggestion #{suggestion['id']}")
+        except Exception as exc:
+            log(f"Failed to trigger reviewer: {exc}")
+            write_text(worker_status_path(), "idle\n")
+            update_agent("worker", state="idle", current_step=None, step_source=None, current_step_started_at=None, last_seen=utc_now())
+    else:
+        update_suggestion(suggestion["id"], status="done")
+        write_text(worker_status_path(), "idle\n")
+        update_agent("worker", state="idle", current_step=None, step_source=None, current_step_started_at=None, last_seen=utc_now())
+        log(f"Worker: skipped reviewer for suggestion #{suggestion['id']} (no concrete file-change report)")
 
-    # Trigger reviewer in background (non-blocking)
-    try:
-        from power_teams.agents.reviewer import _trigger_reviewer_async
-        _trigger_reviewer_async(suggestion["id"])
-        log(f"✅ Reviewer triggered for suggestion #{suggestion['id']}")
-    except Exception as exc:
-        log(f"⚠️ Failed to trigger reviewer: {exc}")
-
-    write_text(worker_status_path(), "idle\n")
-    update_agent("worker", state="idle", current_step=None, current_step_started_at=None, last_seen=utc_now())
     log(f"Worker: finished suggestion #{suggestion['id']}, report written")

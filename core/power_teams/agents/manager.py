@@ -780,7 +780,7 @@ def _handle_manager_response(
     """
     MAX_RETRIES = 3
     repair_attempts = 0
-    update_agent("manager", state="busy", current_step="parsing manager response", current_step_started_at=utc_now(), last_seen=utc_now())
+    update_agent("manager", state="busy", current_step="parsing manager response", step_source="manager", current_step_started_at=utc_now(), last_seen=utc_now())
 
     for repair_attempts in range(MAX_RETRIES + 1):
         response = repair_mojibake(response or "")
@@ -801,6 +801,7 @@ def _handle_manager_response(
             "manager",
             state="busy",
             current_step=f"repairing manager response ({repair_attempts + 1}/{MAX_RETRIES})",
+            step_source="manager",
             current_step_started_at=utc_now(),
             last_seen=utc_now(),
         )
@@ -850,7 +851,7 @@ def _handle_manager_response(
     if not has_todo:
         log(f"⚠ Manager STILL missing <TODO_LIST> after {repair_attempts} repair attempts — accepting incomplete cycle")
 
-    update_agent("manager", state="busy", current_step="persisting plan and todos", current_step_started_at=utc_now(), last_seen=utc_now())
+    update_agent("manager", state="busy", current_step="persisting plan and todos", step_source="manager", current_step_started_at=utc_now(), last_seen=utc_now())
     _persist_plan_and_todos_from(response, owner="manager")
     todo_json_items = _parse_todo_update_json(_extract_section(response, "TODO_UPDATE_JSON"))
     has_todo_json = bool(todo_json_items)
@@ -921,7 +922,7 @@ def _handle_manager_response(
         directive_complete = True
 
     if manager_msg:
-        update_agent("manager", state="busy", current_step="saving manager message", current_step_started_at=utc_now(), last_seen=utc_now())
+        update_agent("manager", state="busy", current_step="saving manager message", step_source="manager", current_step_started_at=utc_now(), last_seen=utc_now())
         _add_manager_message(manager_msg)
         log(f"Manager message saved ({len(manager_msg)} chars)")
 

@@ -67,9 +67,28 @@ class OpenCodeSupervisor:
         self.cwd = (cwd or ROOT).resolve()
         self.opencode_bin = opencode_bin or find_opencode_bin(required=True)
         self.topology = os.environ.get("POWER_TEAMS_OPENCODE_TOPOLOGY", "shared").lower().strip()
-        self.manager_port = manager_port or int(os.environ.get("POWER_TEAMS_OPENCODE_PORT", "0") or 0) or find_free_port()
+        if self.topology not in {"shared", "per_role", "per_session", "per_project"}:
+            self.topology = "shared"
+
+        def _env_port(name: str) -> int:
+            return int(os.environ.get(name, "0") or 0)
+
+        shared_port = _env_port("POWER_TEAMS_OPENCODE_PORT")
+        self.manager_port = manager_port or _env_port("POWER_TEAMS_MANAGER_OPENCODE_PORT") or shared_port or find_free_port()
         self.worker_port = worker_port or (
-            self.manager_port if self.topology == "shared" else find_free_port(exclude={self.manager_port})
+            self.manager_port
+            if self.topology == "shared"
+            else _env_port("POWER_TEAMS_WORKER_OPENCODE_PORT") or find_free_port(exclude={self.manager_port})
+        )
+        self.reviewer_port = (
+            self.manager_port
+            if self.topology == "shared"
+            else _env_port("POWER_TEAMS_REVIEWER_OPENCODE_PORT") or find_free_port(exclude={self.manager_port, self.worker_port})
+        )
+        self.chat_port = (
+            self.manager_port
+            if self.topology == "shared"
+            else _env_port("POWER_TEAMS_CHAT_OPENCODE_PORT") or find_free_port(exclude={self.manager_port, self.worker_port, self.reviewer_port})
         )
         self.startup_timeout = startup_timeout
         self.servers: list[ManagedServer] = []
@@ -259,14 +278,12 @@ class OpenCodeSupervisor:
         return ManagedServer(spec=spec, process=process, log_path=log_path)
 
     def _server_specs(self, cwd: Path) -> list[ServerSpec]:
-        if self.topology == "per_role":
-            reviewer_port = find_free_port(exclude={self.manager_port, self.worker_port})
-            chat_port = find_free_port(exclude={self.manager_port, self.worker_port, reviewer_port})
+        if self.topology in {"per_role", "per_session", "per_project"}:
             return [
                 ServerSpec("manager", "manager", "general", self.manager_port, cwd),
                 ServerSpec("worker", "worker", "general", self.worker_port, cwd),
-                ServerSpec("reviewer", "reviewer", "general", reviewer_port, cwd),
-                ServerSpec("chat", "chat", "general", chat_port, cwd),
+                ServerSpec("reviewer", "reviewer", "general", self.reviewer_port, cwd),
+                ServerSpec("chat", "chat", "general", self.chat_port, cwd),
             ]
 
         # Default topology: one long-lived OpenCode server shared by every

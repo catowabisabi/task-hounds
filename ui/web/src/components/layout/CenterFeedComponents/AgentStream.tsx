@@ -42,20 +42,22 @@ export function AgentStream({ agent, onClear, onStop }: {
 
   const isCrashed = agent.state === "error";
   const isBusy = agent.state === "busy";
+  const isActive = agent.state === "busy" || agent.state === "waiting";
   const showErrorText = Boolean(errorText && hiddenErrorKey !== errorKey);
   const [nowMs, setNowMs] = useState(Date.now());
   const stepStartedMs = agent.current_step_started_at ? Date.parse(agent.current_step_started_at) : NaN;
   const lastStreamMs = agent.last_stream_at ? Date.parse(agent.last_stream_at) : NaN;
   const stepElapsed = Number.isFinite(stepStartedMs) ? Math.max(0, Math.floor((nowMs - stepStartedMs) / 1000)) : null;
   const silentElapsed = Number.isFinite(lastStreamMs) ? Math.max(0, Math.floor((nowMs - lastStreamMs) / 1000)) : null;
-  const stepLabel = agent.current_step?.trim() || "working";
-  const maybeStuck = isBusy && silentElapsed !== null && silentElapsed >= 180;
+  const sourceLabel = agent.step_source?.trim();
+  const stepLabel = `${sourceLabel ? `[${sourceLabel}] ` : ""}${agent.current_step?.trim() || "working"}`;
+  const maybeStuck = isActive && silentElapsed !== null && silentElapsed >= 180;
 
   useEffect(() => {
-    if (!isBusy) return;
+    if (!isActive) return;
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [isBusy]);
+  }, [isActive]);
 
   useEffect(() => {
     if (!errorKey || hiddenErrorKey === errorKey) return;
@@ -75,7 +77,7 @@ export function AgentStream({ agent, onClear, onStop }: {
         style={{ background: "var(--bg-panel)", borderBottom: "1px solid var(--border)" }}
       >
         <StateBadge state={agent.state as "idle" | "busy" | "waiting" | "error" | "offline"} />
-        {isBusy && (
+        {isActive && (
           <span className="text-[11px] animate-pulse" style={{ color: maybeStuck ? "var(--red)" : "var(--amber)" }}>
             {stepLabel}{stepElapsed !== null ? ` · ${stepElapsed}s` : ""}
             {silentElapsed !== null ? ` · last output ${silentElapsed}s ago` : ""}

@@ -68,8 +68,12 @@ config/
 | `OPENCODE_API_KEY` | OpenCode API key |
 | `HERMES_API_KEY` | Hermes API key |
 | `OPENCLAW_API_KEY` | OpenClaw API key |
-| `POWER_TEAMS_OPENCODE_TOPOLOGY` | OpenCode runtime topology. Default is `shared`; use `per_role` to give manager/worker/reviewer/chat separate serve processes. |
-| `POWER_TEAMS_OPENCODE_PORT` | Shared OpenCode port when using `shared` topology. |
+| `POWER_TEAMS_OPENCODE_TOPOLOGY` | OpenCode runtime topology. Default is `shared`; use `per_role` to give manager/worker/reviewer/chat separate serve processes. `per_session` and `per_project` are accepted inactive expansion modes and currently use the same role-isolated server layout. |
+| `POWER_TEAMS_OPENCODE_PORT` | Shared OpenCode port when using `shared` topology, or the base port for role defaults in isolated topologies. |
+| `POWER_TEAMS_MANAGER_OPENCODE_PORT` | Optional explicit manager port when using an isolated topology. |
+| `POWER_TEAMS_WORKER_OPENCODE_PORT` | Optional explicit worker port when using an isolated topology. |
+| `POWER_TEAMS_REVIEWER_OPENCODE_PORT` | Optional explicit reviewer port when using an isolated topology. |
+| `POWER_TEAMS_CHAT_OPENCODE_PORT` | Optional explicit chat port when using an isolated topology. |
 
 **使用方式：**
 ```bash

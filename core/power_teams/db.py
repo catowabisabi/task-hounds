@@ -74,6 +74,7 @@ def _ensure_agent_progress_columns(db: sqlite3.Connection) -> None:
     existing = {row["name"] for row in db.execute("PRAGMA table_info(agent_registry)").fetchall()}
     for name, ddl in {
         "current_step": "ALTER TABLE agent_registry ADD COLUMN current_step TEXT",
+        "step_source": "ALTER TABLE agent_registry ADD COLUMN step_source TEXT",
         "current_step_started_at": "ALTER TABLE agent_registry ADD COLUMN current_step_started_at TIMESTAMP",
         "last_stream_at": "ALTER TABLE agent_registry ADD COLUMN last_stream_at TIMESTAMP",
     }.items():
@@ -84,6 +85,22 @@ def _ensure_agent_progress_columns(db: sqlite3.Connection) -> None:
 def seed_default_agents(path: Path = DB_PATH) -> None:
     shared_host = os.environ.get("POWER_TEAMS_OPENCODE_HOST", "127.0.0.1")
     shared_port = int(os.environ.get("POWER_TEAMS_OPENCODE_PORT", "18765"))
+    topology = os.environ.get("POWER_TEAMS_OPENCODE_TOPOLOGY", "shared").lower().strip()
+    if topology not in {"shared", "per_role", "per_session", "per_project"}:
+        topology = "shared"
+
+    role_port_offsets = {"manager": 0, "worker": 1, "reviewer": 2, "chat": 3}
+
+    def role_host(role: str) -> str:
+        return os.environ.get(f"POWER_TEAMS_{role.upper()}_OPENCODE_HOST", shared_host)
+
+    def role_port(role: str) -> int:
+        env_port = os.environ.get(f"POWER_TEAMS_{role.upper()}_OPENCODE_PORT")
+        if env_port:
+            return int(env_port)
+        if topology == "shared":
+            return shared_port
+        return shared_port + role_port_offsets[role]
 
     def role_agent(role: str) -> str:
         return os.environ.get(f"POWER_TEAMS_{role.upper()}_OPENCODE_AGENT", "Sisyphus - ultraworker")
@@ -94,22 +111,22 @@ def seed_default_agents(path: Path = DB_PATH) -> None:
     with connect(path) as db:
         rows = [
             (
-                "manager_0001", "manager", "manager", shared_host, shared_port,
+                "manager_0001", "manager", "manager", role_host("manager"), role_port("manager"),
                 role_model("manager"), role_agent("manager"), "idle", 0,
                 '{"worker":"worker_0001","reviewer":"reviewer_0001","chat":"chat_0001"}',
             ),
             (
-                "worker_0001", "worker", "worker", shared_host, shared_port,
+                "worker_0001", "worker", "worker", role_host("worker"), role_port("worker"),
                 role_model("worker"), role_agent("worker"), "idle", 0,
                 '{"manager":"manager_0001"}',
             ),
             (
-                "reviewer_0001", "reviewer", "reviewer", shared_host, shared_port,
+                "reviewer_0001", "reviewer", "reviewer", role_host("reviewer"), role_port("reviewer"),
                 role_model("reviewer"), role_agent("reviewer"), "idle", 0,
                 '{"manager":"manager_0001"}',
             ),
             (
-                "chat_0001", "chat", "chat", shared_host, shared_port,
+                "chat_0001", "chat", "chat", role_host("chat"), role_port("chat"),
                 role_model("chat"), role_agent("chat"), "idle", 0,
                 '{"manager":"manager_0001","worker":"worker_0001","reviewer":"reviewer_0001"}',
             ),
@@ -125,12 +142,15 @@ def seed_default_agents(path: Path = DB_PATH) -> None:
         )
         db.execute(
             """
-            UPDATE agent_registry
-               SET host = ?, port = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE name IN ('manager', 'worker', 'reviewer', 'chat')
+            UPDATE agent_registry SET host = ?, port = ?, updated_at = CURRENT_TIMESTAMP WHERE name = 'manager'
             """,
-            (shared_host, shared_port),
+            (role_host("manager"), role_port("manager")),
         )
+        for role in ("worker", "reviewer", "chat"):
+            db.execute(
+                "UPDATE agent_registry SET host=?, port=?, updated_at=CURRENT_TIMESTAMP WHERE name=?",
+                (role_host(role), role_port(role), role),
+            )
         if "POWER_TEAMS_WORKER_OPENCODE_AGENT" not in os.environ:
             db.execute(
                 """
