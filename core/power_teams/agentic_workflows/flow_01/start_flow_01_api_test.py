@@ -7,8 +7,8 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from constants import DEFAULT_API_TEST_DIR, DEFAULT_FLOW01_BASE_URL
 
-DEFAULT_TEST_DIR = Path.home() / "Desktop" / "test" / "05"
 DEFAULT_DIRECTIVE = (
     "Create a minimal observable flow_01 test artifact in this workspace. "
     "Start from the manager-selected task, keep the change small, and report "
@@ -41,9 +41,9 @@ def main() -> int:
         sys.stderr.reconfigure(encoding="utf-8")
 
     parser = argparse.ArgumentParser(description="Start a flow_01 API test run.")
-    parser.add_argument("--base-url", default="http://127.0.0.1:8866")
-    parser.add_argument("--workspace", default=str(DEFAULT_TEST_DIR))
-    parser.add_argument("--directive-file", default=str(DEFAULT_TEST_DIR / "human_directive.txt"))
+    parser.add_argument("--base-url", default=DEFAULT_FLOW01_BASE_URL)
+    parser.add_argument("--workspace", default=str(DEFAULT_API_TEST_DIR))
+    parser.add_argument("--directive-file", default=str(DEFAULT_API_TEST_DIR / "human_directive.txt"))
     parser.add_argument("--loops", type=int, default=1)
     parser.add_argument("--local-worker", action="store_true", help="Use deterministic local worker instead of OpenCode.")
     parser.add_argument("--no-ui-signals", action="store_true", help="Disable writes to existing UI streams.")
@@ -62,7 +62,7 @@ def main() -> int:
         "manager_message": "Manager should release exactly one small task, then Worker should report concrete evidence.",
         "workspace_path": str(workspace),
         "emit_real_ui_signals": not args.no_ui_signals,
-        "use_real_worker": not args.local_worker,
+        "use_real_executors": not args.local_worker,
     }
     url = args.base_url.rstrip("/") + "/api/workflows/flow_01/run"
     print(f"POST {url}")

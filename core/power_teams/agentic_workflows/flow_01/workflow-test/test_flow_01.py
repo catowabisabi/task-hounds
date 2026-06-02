@@ -13,10 +13,14 @@ from power_teams.agentic_workflows.flow_01 import (  # noqa: E402
     DB_PATH,
     WORKFLOW_TEST_DIR,
     Flow01Workflow,
+    FlowLoopInput,
     FlowInput,
     FlowLimits,
+    FlowState,
     FlowStorage,
     FastApiServiceSignalAdapter,
+    OpenCodeReviewerExecutor,
+    OpenCodeWorkerExecutor,
     RecordingSignalAdapter,
     build_langgraph,
 )
@@ -287,3 +291,37 @@ def test_fastapi_signal_adapter_writes_streams_and_agent_state(tmp_path):
     assert any(role == "manager" and fields["state"] == "busy" for role, fields in fake_services.agents.updates)
     assert any(role == "worker" and fields["state"] == "busy" for role, fields in fake_services.agents.updates)
     assert any(role == "reviewer" and fields["state"] == "busy" for role, fields in fake_services.agents.updates)
+
+
+def test_opencode_reviewer_bad_json_fails_instead_of_silent_pass(monkeypatch, tmp_path):
+    from power_teams.agents import base as agent_base
+
+    def fake_send_to_agent(*args, **kwargs):
+        return "I reviewed it. Looks good, but I forgot the JSON block."
+
+    monkeypatch.setattr(agent_base, "send_to_agent", fake_send_to_agent)
+    workflow = Flow01Workflow(storage=FlowStorage(DB_PATH), workdir=tmp_path, signal_adapter=RecordingSignalAdapter())
+    state = workflow.manager_step(FlowState(flow_input=_flow_input(), loop_input=FlowLoopInput(loop_index=1)))
+    state.loop_input.worker_report = "Changed `worker-output.txt`. Verification passed."
+    state.loop_input.files_changed = ["worker-output.txt"]
+    state.loop_input.test_result = "passed"
+
+    with pytest.raises(ValueError, match="flow_01 JSON parse failed"):
+        OpenCodeReviewerExecutor().execute(state, tmp_path)
+
+
+def test_worker_known_issue_parser_ignores_negative_statements():
+    executor = OpenCodeWorkerExecutor()
+    report = """
+    Changes made:
+    - Updated `app.py`
+
+    Verification result:
+    - Passed
+
+    Known issues:
+    - No blocking issues found.
+    - No failures observed.
+    """
+
+    assert executor._extract_known_issues(report) == []

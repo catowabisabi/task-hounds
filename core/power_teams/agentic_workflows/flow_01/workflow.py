@@ -40,6 +40,7 @@ def _state_from_raw(raw_state: dict) -> FlowState:
         status=raw_state.get("status", "pending"),
         input_digest=raw_state.get("input_digest", ""),
         decision=raw_state.get("decision", {}),
+        manager_message=raw_state.get("manager_message", ""),
         plan=raw_state.get("plan", ""),
         todo_list=raw_state.get("todo_list", []),
         todo_update_json=raw_state.get("todo_update_json", {}),
@@ -95,22 +96,42 @@ class ReviewerExecutor(Protocol):
     def execute(self, state: FlowState, workdir: Path, cancel_token: CancellationToken | None = None) -> ReviewerExecutionResult: ...
 
 
-def _extract_json_object(text: str) -> dict[str, Any]:
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    raw = fenced.group(1) if fenced else ""
-    if not raw:
-        start = text.find("{")
-        end = text.rfind("}")
-        raw = text[start : end + 1] if start >= 0 and end > start else ""
-    if not raw:
-        return {}
-    try:
-        import json
+def _extract_json_object(text: str, *, required_keys: set[str] | None = None, strict: bool = False) -> dict[str, Any]:
+    import json
 
-        parsed = json.loads(raw)
-        return parsed if isinstance(parsed, dict) else {}
-    except Exception:
-        return {}
+    blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", text or "")
+    candidates = []
+    for block in blocks:
+        start = block.find("{")
+        end = block.rfind("}")
+        if start >= 0 and end > start:
+            candidates.append(block[start : end + 1])
+    if not candidates:
+        start = (text or "").find("{")
+        end = (text or "").rfind("}")
+        if start >= 0 and end > start:
+            candidates.append((text or "")[start : end + 1])
+
+    errors: list[str] = []
+    for raw in candidates:
+        try:
+            parsed = json.loads(raw)
+        except Exception as exc:
+            errors.append(str(exc))
+            continue
+        if not isinstance(parsed, dict):
+            errors.append("parsed JSON is not an object")
+            continue
+        if required_keys and not required_keys.issubset(parsed.keys()):
+            missing = ", ".join(sorted(required_keys - set(parsed.keys())))
+            errors.append(f"missing required keys: {missing}")
+            continue
+        return parsed
+
+    if strict:
+        reason = "; ".join(errors) if errors else "no JSON object found"
+        raise ValueError(f"flow_01 JSON parse failed: {reason}")
+    return {}
 
 
 class LocalManagerExecutor:
@@ -166,7 +187,10 @@ class OpenCodeManagerExecutor:
         reply = send_to_agent("manager", self._prompt(state), max_retries=0, cwd=str(workspace_path))
         if cancel_token and cancel_token.cancelled():
             raise RuntimeError("Manager execution cancelled after manager returned")
-        data = _extract_json_object(reply)
+        data = _extract_json_object(
+            reply,
+            required_keys={"input_digest", "decision", "manager_message", "plan", "suggestion_content", "suggestion_verification"},
+        )
         todo_items = data.get("todo_list") or data.get("todos") or fallback.todo_items
         if not isinstance(todo_items, list):
             todo_items = fallback.todo_items
@@ -195,6 +219,11 @@ class OpenCodeManagerExecutor:
             "suggestion_verification, handoff_update.\n\n"
             "=== HUMAN_DIRECTIVE ===\n"
             f"{flow_input.human_directive}\n\n"
+            "=== PROJECT_IDENTITY ===\n"
+            f"power_team_project_id={flow_input.power_team_project_id}\n"
+            f"project_session_id={flow_input.project_session_id}\n"
+            f"workspace_id={flow_input.workspace_id}\n"
+            f"workspace_path={flow_input.workspace_path or '(none)'}\n\n"
             "=== HUMAN_NEW_THOUGHT_AND_SUGGESTION ===\n"
             f"{flow_input.human_new_thought_and_suggestion or '(none)'}\n\n"
             "=== HUMAN_SUGGESTED_NEW_TASK_OR_ITEM ===\n"
@@ -204,6 +233,9 @@ class OpenCodeManagerExecutor:
             "=== TODO STATE ===\n"
             + "\n".join(f"- {item}" for item in flow_input.todo_items)
             + "\n\n"
+            "=== PREVIOUS_HANDOFF_HINTS ===\n"
+            f"previous_test_result={loop_input.test_result or '(none)'}\n"
+            f"previous_known_issues={loop_input.known_issues or []}\n\n"
             "=== PREVIOUS WORKER_REPORT ===\n"
             f"{loop_input.worker_report or '(none)'}\n\n"
             "=== REVIEWER_FEEDBACK ===\n"
@@ -285,16 +317,24 @@ class OpenCodeWorkerExecutor:
             "=== HUMAN DIRECTIVE ===\n"
             f"{flow_input.human_directive}\n\n"
             "=== MANAGER MESSAGE ===\n"
-            f"{flow_input.manager_message or '(none)'}\n\n"
+            f"{state.manager_message or flow_input.manager_message or '(none)'}\n\n"
+            "=== MANAGER DECISION ===\n"
+            f"{state.decision or {}}\n\n"
             "=== CURRENT TASK ===\n"
             f"{state.suggestion_content}\n\n"
+            "=== ACCEPTANCE CRITERIA ===\n"
+            f"{state.suggestion_verification or '(none)'}\n\n"
             "=== TODO LIST ===\n"
-            + "\n".join(f"- {item}" for item in flow_input.todo_items)
+            + "\n".join(
+                f"- id={item.get('id')} status={item.get('status')} owner={item.get('owner')} "
+                f"position={item.get('position')} content={item.get('content')}"
+                for item in state.todo_list
+            )
             + "\n\n"
             "=== PREVIOUS WORKER REPORT ===\n"
             f"{loop_input.worker_report or '(none)'}\n\n"
             "=== REVIEWER FEEDBACK ===\n"
-            f"{loop_input.reviewer_feedback or '(none)'}\n\n"
+            f"{loop_input.reviewer_feedback or '(none; Manager has already selected the current task)'}\n\n"
             "Instructions:\n"
             "- Make the smallest useful implementation change that satisfies the current task.\n"
             "- Keep existing UI/UX contracts stable unless the task explicitly asks otherwise.\n"
@@ -328,7 +368,16 @@ class OpenCodeWorkerExecutor:
         for line in report.splitlines():
             cleaned = line.strip("- *").strip()
             lowered = cleaned.lower()
-            if not cleaned or lowered in {"none", "n/a", "no known issues"}:
+            negative_markers = (
+                "none",
+                "n/a",
+                "no known issues",
+                "no issues",
+                "no blocking issues",
+                "no failures",
+                "not blocked",
+            )
+            if not cleaned or any(lowered.startswith(marker) for marker in negative_markers):
                 continue
             if lowered.rstrip(":") in {"known issues", "issues"}:
                 continue
@@ -393,11 +442,14 @@ class OpenCodeReviewerExecutor:
         reply = send_to_agent("reviewer", self._prompt(state), max_retries=0, cwd=str(workspace_path))
         if cancel_token and cancel_token.cancelled():
             raise RuntimeError("Reviewer execution cancelled after reviewer returned")
-        data = _extract_json_object(reply)
-        fallback = LocalReviewerExecutor().execute(state, workdir, cancel_token=cancel_token)
+        data = _extract_json_object(
+            reply,
+            required_keys={"reviewer_feedback", "qa_result", "bugs", "uiux_suggestions", "possible_problems", "safety_security_risks"},
+            strict=True,
+        )
         return ReviewerExecutionResult(
-            feedback=str(data.get("reviewer_feedback") or data.get("feedback") or reply.strip() or fallback.feedback),
-            qa_result=str(data.get("qa_result") or fallback.qa_result),
+            feedback=str(data.get("reviewer_feedback") or data.get("feedback") or reply.strip()),
+            qa_result=str(data.get("qa_result") or "needs_review"),
             bugs=self._list(data.get("bugs")),
             uiux_suggestions=self._list(data.get("uiux_suggestions")),
             possible_problems=self._list(data.get("possible_problems")),
@@ -411,12 +463,30 @@ class OpenCodeReviewerExecutor:
             "and safety/security risks.\n\n"
             "Return a JSON object inside one ```json fenced block with these keys:\n"
             "reviewer_feedback, qa_result, bugs, uiux_suggestions, possible_problems, safety_security_risks.\n\n"
+            "qa_result must be one of: pass, fail, needs_review. Use needs_review when evidence is incomplete.\n\n"
             "=== HUMAN_DIRECTIVE ===\n"
             f"{state.flow_input.human_directive}\n\n"
             "=== MANAGER_MESSAGE ===\n"
-            f"{state.flow_input.manager_message or state.suggestion_content or '(none)'}\n\n"
+            f"{state.manager_message or state.flow_input.manager_message or '(none)'}\n\n"
+            "=== MANAGER_DECISION ===\n"
+            f"{state.decision or {}}\n\n"
+            "=== MANAGER_PLAN ===\n"
+            f"{state.plan or '(none)'}\n\n"
+            "=== TODO_STATE ===\n"
+            + "\n".join(
+                f"- id={item.get('id')} status={item.get('status')} owner={item.get('owner')} "
+                f"position={item.get('position')} content={item.get('content')}"
+                for item in state.todo_list
+            )
+            + "\n\n"
+            "=== HANDOFF_UPDATE ===\n"
+            f"{state.handoff_update or {}}\n\n"
             "=== WORKER_TASK ===\n"
             f"{state.suggestion_content}\n\n"
+            "=== SUGGESTION_VERIFICATION ===\n"
+            f"{state.suggestion_verification or '(none)'}\n\n"
+            "=== PREVIOUS_REVIEWER_FEEDBACK ===\n"
+            f"{state.loop_input.reviewer_feedback or '(none)'}\n\n"
             "=== WORKER_REPORT ===\n"
             f"{state.loop_input.worker_report or '(none)'}\n\n"
             "=== FILES_CHANGED ===\n"
@@ -505,6 +575,7 @@ class Flow01Workflow:
         result = self.manager_executor.execute(state, workdir, cancel_token=cancel_token)
         state.input_digest = result.input_digest
         state.decision = result.decision
+        state.manager_message = result.manager_message
         state.plan = result.plan
         state.todo_list = [
             {
@@ -557,6 +628,7 @@ class Flow01Workflow:
             payload={
                 "input_digest": state.input_digest,
                 "decision": state.decision,
+                "manager_message": state.manager_message,
                 "plan": state.plan,
                 "todo_update_json": state.todo_update_json,
                 "handoff_update": state.handoff_update,
@@ -616,11 +688,7 @@ class Flow01Workflow:
         )
         manager_message = UIManagerMessage(
             id=0,
-            content=(
-                f"Loop {state.loop_input.loop_index}: I digested the directive, "
-                f"manager message, todo list, worker report, and reviewer feedback. "
-                f"Next task: {state.suggestion_content}"
-            ),
+            content=state.manager_message or f"Loop {state.loop_input.loop_index}: Manager selected next task: {state.suggestion_content}",
             created_at="",
             is_human=False,
             queue_status="manager_response",

@@ -909,7 +909,7 @@ export default function App() {
                       directive: directiveStatus.directive_content,
                       suggested_task: "Start from the current Human Directive and create the first observable worker task.",
                       emit_real_ui_signals: true,
-                      use_real_worker: true,
+                      use_real_executors: true,
                     });
                     setFlow01Run({ id: result.run_id, status: result.status, task: result.task });
                   } else {
@@ -1053,6 +1053,7 @@ export default function App() {
               onSuggestionAction={fetchSuggestion}
               onMessagesRefresh={fetchMessages}
               directiveClearKey={directiveClearKey}
+              flow01Mode={flow01Mode}
             />
             <RailToggle side="left" onClick={() => closeRail("right")} title="Collapse right rail">›</RailToggle>
           </div>

@@ -5,3 +5,4 @@ export { SuggestionPanel } from "./SuggestionPanel";
 export { FilesPanel } from "./FilesPanel";
 export { HandoffPanel } from "./HandoffPanel";
 export { ChatAgentPanel } from "./ChatAgentPanel";
+export { Flow01ReportsPanel } from "./Flow01ReportsPanel";

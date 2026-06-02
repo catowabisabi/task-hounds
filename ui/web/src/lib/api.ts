@@ -214,6 +214,32 @@ export interface ManagerMessage {
   status_label?: string;
 }
 
+export interface Flow01Reports {
+  ok: boolean;
+  flow: "flow_01";
+  session_id: string;
+  worker: null | {
+    report: string;
+    files_changed: string[];
+    test_result: string;
+    known_issues: string[];
+    created_at: string;
+  };
+  reviewer: null | {
+    status: string;
+    qa_result: string;
+    review_notes: string;
+    bugs: string[];
+    uiux_suggestions: string[];
+    possible_problems: string[];
+    safety_security_risks: string[];
+    scripts_documented: string;
+    started_at: string;
+    completed_at: string | null;
+    created_at: string;
+  };
+}
+
 export interface ChatMessage {
   id: number;
   session_id: string;

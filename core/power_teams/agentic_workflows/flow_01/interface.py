@@ -110,6 +110,7 @@ class FlowState:
     status: LoopStatus = "pending"
     input_digest: str = ""
     decision: dict = field(default_factory=dict)
+    manager_message: str = ""
     plan: str = ""
     todo_list: list[dict] = field(default_factory=list)
     todo_update_json: dict = field(default_factory=dict)

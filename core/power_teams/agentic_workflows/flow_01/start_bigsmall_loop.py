@@ -5,10 +5,11 @@ import sys
 import time
 from urllib.request import Request, urlopen
 
+from constants import DEFAULT_FLOW01_BASE_URL
 from put_bigsmall_directive import DIRECTIVE, WORKSPACE
 
 
-BASE_URL = "http://127.0.0.1:8866"
+BASE_URL = DEFAULT_FLOW01_BASE_URL
 TASK = (
     "根據買大細 BigSmall 規格，建立第一個可運行的本地優先 Web App 骨架："
     "FastAPI + SQLite + 靜態 HTML/JS，包含認證、房間、下注、開獎的最小可測版本。"
@@ -53,7 +54,7 @@ def main() -> int:
             "thought": "Use the new background flow_01 start-loop. Create the todo list first, then let Worker implement one observable slice.",
             "manager_message": "Manager should release one concrete implementation task and require files changed plus verification evidence.",
             "emit_real_ui_signals": True,
-            "use_real_worker": True,
+            "use_real_executors": True,
         },
         timeout=60,
     )

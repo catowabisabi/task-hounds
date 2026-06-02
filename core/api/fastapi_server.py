@@ -493,6 +493,7 @@ class FlowRunRequest(BaseModel):
     workspace_path: str | None = None
     emit_real_ui_signals: bool = True
     use_real_worker: bool = True
+    use_real_executors: bool | None = None
 
 
 class FlowDirectiveRequest(BaseModel):
@@ -2353,6 +2354,7 @@ def _flow_01_create_start_loop_run(flow_input: Any, *, use_real_worker: bool, em
         "task": "",
         "todo_update_json": {"items": []},
         "use_real_worker": use_real_worker,
+        "use_real_executors": use_real_worker,
         "emit_real_ui_signals": emit_real_ui_signals,
     }
     with sqlite3.connect(storage.db_path) as conn:
@@ -2441,6 +2443,10 @@ def _flow_01_create_start_loop_run(flow_input: Any, *, use_real_worker: bool, em
     }
 
 
+def _flow_01_use_real_executors(body: FlowRunRequest) -> bool:
+    return body.use_real_executors if body.use_real_executors is not None else body.use_real_worker
+
+
 def _flow_01_mark_run(run_id: int, *, status: str, output_json: dict) -> None:
     import sqlite3
 
@@ -2507,7 +2513,7 @@ def _flow_01_write_manager_state(run_id: int, flow_input: Any, state: Any) -> No
     storage.init_db()
     now = utc_now()
     identity = flow_input.identity()
-    manager_message = (
+    manager_message = state.manager_message or (
         f"Loop {state.loop_input.loop_index}: I digested the directive, manager message, "
         f"todo list, worker report, and reviewer feedback. Next task: {state.suggestion_content}"
     )
@@ -2644,9 +2650,10 @@ def _flow_01_background_run(run_id: int, flow_input: Any, body: FlowRunRequest) 
 
     storage = FlowStorage()
     adapter = FastApiServiceSignalAdapter() if body.emit_real_ui_signals else RecordingSignalAdapter()
-    manager_executor = OpenCodeManagerExecutor() if body.use_real_worker else LocalManagerExecutor()
-    worker_executor = OpenCodeWorkerExecutor() if body.use_real_worker else LocalFileWorkerExecutor()
-    reviewer_executor = OpenCodeReviewerExecutor() if body.use_real_worker else LocalReviewerExecutor()
+    use_real_executors = _flow_01_use_real_executors(body)
+    manager_executor = OpenCodeManagerExecutor() if use_real_executors else LocalManagerExecutor()
+    worker_executor = OpenCodeWorkerExecutor() if use_real_executors else LocalFileWorkerExecutor()
+    reviewer_executor = OpenCodeReviewerExecutor() if use_real_executors else LocalReviewerExecutor()
     workflow = Flow01Workflow(
         storage=storage,
         signal_adapter=adapter,
@@ -2767,9 +2774,9 @@ def _flow_01_input_from_current_ui(body: FlowRunRequest):
         chat_opencode_session_id=str(settings.get("chat_session_id") or "flow_01_chat_ui"),
         server_instance_id=None,
         human_directive=directive,
-        human_new_thought_and_suggestion=body.thought or "Triggered from FastAPI for real UI signal verification.",
+        human_new_thought_and_suggestion=body.thought or "",
         human_suggested_new_task_or_item=body.suggested_task or todo_items[0],
-        manager_message=body.manager_message or "Flow 01 is emitting real dashboard signals while keeping workflow DB writes in its fake DB.",
+        manager_message=body.manager_message or "",
         todo_items=todo_items,
     )
 
@@ -3175,6 +3182,92 @@ def get_flow_01_manager_messages(limit: int = Query(default=50, ge=1, le=200)):
     ]
 
 
+@app.get("/api/workflows/flow_01/reports", tags=["workflows"])
+def get_flow_01_reports():
+    import sqlite3
+
+    from power_teams.agentic_workflows.flow_01 import FlowStorage
+
+    storage = FlowStorage()
+    storage.init_db()
+    session_id = get_active_project_session_id()
+    with sqlite3.connect(storage.db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        worker = conn.execute(
+            """
+            SELECT report, files_changed_json, test_result, known_issues_json, created_at
+              FROM worker_reports
+             WHERE session_id=?
+             ORDER BY id DESC
+             LIMIT 1
+            """,
+            (session_id,),
+        ).fetchone()
+        reviewer = conn.execute(
+            """
+            SELECT status, review_notes, usability_issues, style_feedback, scripts_documented,
+                   started_at, completed_at, created_at
+              FROM reviewer_sessions
+             WHERE project_session_id=?
+             ORDER BY id DESC
+             LIMIT 1
+            """,
+            (session_id,),
+        ).fetchone()
+        run = conn.execute(
+            """
+            SELECT output_json
+              FROM workflow_runs
+             WHERE project_session_id=?
+             ORDER BY id DESC
+             LIMIT 1
+            """,
+            (session_id,),
+        ).fetchone()
+
+    def _json_list(value: str | None) -> list[str]:
+        if not value:
+            return []
+        try:
+            parsed = json.loads(value)
+            return [str(item) for item in parsed] if isinstance(parsed, list) else []
+        except Exception:
+            return [value]
+
+    reviewer_payload = {}
+    if run:
+        try:
+            reviewer_payload = (json.loads(run["output_json"] or "{}").get("reviewer") or {}).get("payload") or {}
+        except Exception:
+            reviewer_payload = {}
+
+    return {
+        "ok": True,
+        "flow": "flow_01",
+        "session_id": session_id,
+        "worker": None if not worker else {
+            "report": worker["report"],
+            "files_changed": _json_list(worker["files_changed_json"]),
+            "test_result": worker["test_result"],
+            "known_issues": _json_list(worker["known_issues_json"]),
+            "created_at": worker["created_at"],
+        },
+        "reviewer": None if not reviewer else {
+            "status": reviewer["status"],
+            "qa_result": str(reviewer_payload.get("qa_result") or ""),
+            "review_notes": reviewer["review_notes"],
+            "bugs": _json_list(json.dumps(reviewer_payload.get("bugs", []), ensure_ascii=False) if reviewer_payload else reviewer["usability_issues"]),
+            "uiux_suggestions": _json_list(json.dumps(reviewer_payload.get("uiux_suggestions", []), ensure_ascii=False) if reviewer_payload else reviewer["style_feedback"]),
+            "possible_problems": _json_list(json.dumps(reviewer_payload.get("possible_problems", []), ensure_ascii=False)) if reviewer_payload else [],
+            "safety_security_risks": _json_list(json.dumps(reviewer_payload.get("safety_security_risks", []), ensure_ascii=False)) if reviewer_payload else [],
+            "scripts_documented": reviewer["scripts_documented"],
+            "started_at": reviewer["started_at"],
+            "completed_at": reviewer["completed_at"],
+            "created_at": reviewer["created_at"],
+        },
+    }
+
+
 @app.post("/api/workflows/flow_01/run", tags=["workflows"])
 def run_flow_01(body: FlowRunRequest):
     try:
@@ -3197,9 +3290,10 @@ def run_flow_01(body: FlowRunRequest):
         adapter = FastApiServiceSignalAdapter() if body.emit_real_ui_signals else RecordingSignalAdapter()
         storage = FlowStorage()
         storage.init_db()
-        manager_executor = OpenCodeManagerExecutor() if body.use_real_worker else LocalManagerExecutor()
-        worker_executor = OpenCodeWorkerExecutor() if body.use_real_worker else LocalFileWorkerExecutor()
-        reviewer_executor = OpenCodeReviewerExecutor() if body.use_real_worker else LocalReviewerExecutor()
+        use_real_executors = _flow_01_use_real_executors(body)
+        manager_executor = OpenCodeManagerExecutor() if use_real_executors else LocalManagerExecutor()
+        worker_executor = OpenCodeWorkerExecutor() if use_real_executors else LocalFileWorkerExecutor()
+        reviewer_executor = OpenCodeReviewerExecutor() if use_real_executors else LocalReviewerExecutor()
         workflow = Flow01Workflow(
             storage=storage,
             signal_adapter=adapter,
@@ -3231,6 +3325,7 @@ def run_flow_01(body: FlowRunRequest):
             "requested": {
                 "workspace_path": flow_input.workspace_path,
                 "use_real_worker": body.use_real_worker,
+                "use_real_executors": use_real_executors,
             },
             "session_id": flow_input.project_session_id,
             "power_team_project_id": flow_input.power_team_project_id,
@@ -3263,7 +3358,7 @@ def start_flow_01_loop(body: FlowRunRequest):
         storage.init_db()
         start = _flow_01_create_start_loop_run(
             flow_input,
-            use_real_worker=body.use_real_worker,
+            use_real_worker=_flow_01_use_real_executors(body),
             emit_real_ui_signals=body.emit_real_ui_signals,
         )
         thread = threading.Thread(

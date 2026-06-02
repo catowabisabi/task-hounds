@@ -7,6 +7,7 @@ import {
   FilesPanel,
   HandoffPanel,
   ChatAgentPanel,
+  Flow01ReportsPanel,
 } from "./RightRailComponents";
 
 interface Props {
@@ -15,9 +16,10 @@ interface Props {
   onSuggestionAction: () => void;
   onMessagesRefresh: () => void;
   directiveClearKey?: number;
+  flow01Mode?: boolean;
 }
 
-export function RightRail({ suggestion, messages, onSuggestionAction, onMessagesRefresh, directiveClearKey = 0 }: Props) {
+export function RightRail({ suggestion, messages, onSuggestionAction, onMessagesRefresh, directiveClearKey = 0, flow01Mode = false }: Props) {
   return (
     <aside
       className="w-72 shrink-0 flex flex-col min-h-0"
@@ -37,6 +39,11 @@ export function RightRail({ suggestion, messages, onSuggestionAction, onMessages
         <div className="p-4 space-y-4">
           <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--text-dim)" }}>System Status</p>
           <SuggestionPanel suggestion={suggestion} onAction={onSuggestionAction} />
+          {flow01Mode && (
+            <div style={{ borderTop: "1px solid var(--border-dim)" }} className="pt-3">
+              <Flow01ReportsPanel refreshKey={directiveClearKey} />
+            </div>
+          )}
           <div style={{ borderTop: "1px solid var(--border-dim)" }} className="pt-3">
             <FilesPanel clearKey={directiveClearKey} />
           </div>

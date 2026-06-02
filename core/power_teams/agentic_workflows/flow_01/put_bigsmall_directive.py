@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 from urllib.request import Request, urlopen
 
+from constants import DEFAULT_BIGSMALL_WORKSPACE, DEFAULT_FLOW01_BASE_URL
 
-BASE_URL = "http://127.0.0.1:8866"
-WORKSPACE = r"C:\Users\enoma\Desktop\test\02"
+BASE_URL = DEFAULT_FLOW01_BASE_URL
+WORKSPACE = str(DEFAULT_BIGSMALL_WORKSPACE)
 
 DIRECTIVE = """# 買大細遊戲 App 規格文檔
 
