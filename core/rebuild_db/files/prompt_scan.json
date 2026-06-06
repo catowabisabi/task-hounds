@@ -1,0 +1,369 @@
+[
+  {
+    "path": "core/api/fastapi_server.py",
+    "lines": 4139,
+    "prompt_count": 3,
+    "prompts": [
+      {
+        "line": 1256,
+        "col": 12,
+        "length": 653,
+        "preview": "f'You are the Task Hounds Chat agent. You talk directly with the human about the currently active pr...",
+        "full": "f'You are the Task Hounds Chat agent. You talk directly with the human about the currently active project session.\\n\\nUse the Task Hounds DB Skill when you need project context. Do not read the SQLite file directly. You may read project context and chat history. Only create a user directive when the human clearly asks you to turn the conversation into work for Manager/Worker.\\n\\nCurrent project_session_id: {session_id}\\nYour role_session_id: {role_session_id}\\n\\nCurrent workspace_path: {workspace_path}\\n\\nReply conversationally and concisely. If you create or suggest a directive, tell the human exactly what you did.\\n\\nHuman message:\\n{content}'"
+      },
+      {
+        "line": 2664,
+        "col": 16,
+        "length": 566,
+        "preview": "                 INSERT INTO session_todos                   (id, power_team_project_id, session_id,...",
+        "full": "\n                INSERT INTO session_todos\n                  (id, power_team_project_id, session_id, parent_id, content, status, priority, position, owner, created_at, updated_at)\n                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n                ON CONFLICT(id) DO UPDATE SET\n                  content=excluded.content,\n                  status=excluded.status,\n                  priority=excluded.priority,\n                  position=excluded.position,\n                  owner=excluded.owner,\n                  updated_at=excluded.updated_at\n                "
+      },
+      {
+        "line": 2750,
+        "col": 20,
+        "length": 610,
+        "preview": "                     INSERT INTO session_todos                       (id, power_team_project_id, ses...",
+        "full": "\n                    INSERT INTO session_todos\n                      (id, power_team_project_id, session_id, parent_id, content, status, priority, position, owner, created_at, updated_at)\n                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n                    ON CONFLICT(id) DO UPDATE SET\n                      content=excluded.content,\n                      status=excluded.status,\n                      priority=excluded.priority,\n                      position=excluded.position,\n                      owner=excluded.owner,\n                      updated_at=excluded.updated_at\n                    "
+      }
+    ]
+  },
+  {
+    "path": "core/api/server_legacy.py",
+    "lines": 3248,
+    "prompt_count": 1,
+    "prompts": [
+      {
+        "line": 2255,
+        "col": 16,
+        "length": 653,
+        "preview": "f'You are the Task Hounds Chat agent. You talk directly with the human about the currently active pr...",
+        "full": "f'You are the Task Hounds Chat agent. You talk directly with the human about the currently active project session.\\n\\nUse the Task Hounds DB Skill when you need project context. Do not read the SQLite file directly. You may read project context and chat history. Only create a user directive when the human clearly asks you to turn the conversation into work for Manager/Worker.\\n\\nCurrent project_session_id: {session_id}\\nYour role_session_id: {role_session_id}\\n\\nCurrent workspace_path: {workspace_path}\\n\\nReply conversationally and concisely. If you create or suggest a directive, tell the human exactly what you did.\\n\\nHuman message:\\n{content}'"
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/__init__.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "prompts": []
+  },
+  {
+    "path": "core/power_teams/agentic_workflows/flow_00_temp/interface.py",
+    "lines": 658,
+    "prompt_count": 2,
+    "prompts": [
+      {
+        "line": 222,
+        "col": 20,
+        "length": 6942,
+        "preview": "                     CREATE TABLE IF NOT EXISTS project_sessions (                         id TEXT P...",
+        "full": "\n                    CREATE TABLE IF NOT EXISTS project_sessions (\n                        id TEXT PRIMARY KEY,\n                        power_team_project_id TEXT NOT NULL,\n                        workspace_id TEXT,\n                        name TEXT,\n                        manager_session_id TEXT,\n                        worker_session_id TEXT,\n                        reviewer_session_id TEXT,\n                        chat_session_id TEXT,\n                        is_active INTEGER DEFAULT 1,\n                        workspace_path TEXT,\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS project_session_role_sessions (\n                        project_session_id TEXT NOT NULL,\n                        power_team_project_id TEXT NOT NULL,\n                        role TEXT NOT NULL CHECK(role IN ('manager', 'worker', 'reviewer', 'chat')),\n                        opencode_session_id TEXT,\n                        server_instance_id INTEGER,\n                        workspace_path TEXT,\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL,\n                        PRIMARY KEY (project_session_id, role)\n                    );\n\n                    CREATE TABLE IF NOT EXISTS workflow_runs (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        project_session_id TEXT NOT NULL,\n                        loop_index INTEGER NOT NULL,\n                        status TEXT NOT NULL,\n                        manager_opencode_session_id TEXT,\n                        worker_opencode_session_id TEXT,\n                        reviewer_opencode_session_id TEXT,\n                        server_instance_id INTEGER,\n                        input_json TEXT NOT NULL,\n                        output_json TEXT NOT NULL,\n                        created_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS user_directives (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        session_id TEXT NOT NULL,\n                        directive TEXT NOT NULL,\n                        status TEXT NOT NULL DEFAULT 'pending',\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS manager_messages (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        content TEXT NOT NULL,\n                        session_id TEXT,\n                        queue_status TEXT,\n                        status_label TEXT,\n                        created_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS session_plan (\n                        session_id TEXT PRIMARY KEY,\n                        power_team_project_id TEXT NOT NULL,\n                        content TEXT NOT NULL,\n                        updated_by TEXT DEFAULT 'manager',\n                        updated_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS session_todos (\n                        id TEXT PRIMARY KEY,\n                        power_team_project_id TEXT NOT NULL,\n                        session_id TEXT NOT NULL,\n                        parent_id TEXT,\n                        content TEXT NOT NULL,\n                        status TEXT NOT NULL DEFAULT 'pending',\n                        priority TEXT DEFAULT 'medium',\n                        position INTEGER DEFAULT 0,\n                        owner TEXT DEFAULT 'manager',\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS suggestion_queue (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        content TEXT NOT NULL,\n                        status TEXT DEFAULT 'pending',\n                        human_comment TEXT,\n                        verification TEXT,\n                        related_files TEXT,\n                        handoff_version INTEGER,\n                        session_id TEXT,\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL,\n                        released_at TEXT,\n                        done_at TEXT\n                    );\n\n                    CREATE TABLE IF NOT EXISTS worker_reports (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        session_id TEXT NOT NULL,\n                        worker_opencode_session_id TEXT,\n                        report TEXT NOT NULL,\n                        files_changed_json TEXT,\n                        test_result TEXT,\n                        known_issues_json TEXT,\n                        created_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS reviewer_sessions (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        project_session_id TEXT NOT NULL,\n                        reviewer_opencode_session_id TEXT,\n                        suggestion_id INTEGER NOT NULL,\n                        status TEXT DEFAULT 'pending',\n                        screenshot_paths TEXT,\n                        review_notes TEXT,\n                        usability_issues TEXT,\n                        style_feedback TEXT,\n                        scripts_documented TEXT,\n                        started_at TEXT NOT NULL,\n                        completed_at TEXT,\n                        timeout_at TEXT,\n                        created_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS project_handoff (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        version INTEGER NOT NULL DEFAULT 1,\n                        power_team_project_id TEXT NOT NULL,\n                        human_requirements TEXT,\n                        working_direction TEXT,\n                        current_task TEXT,\n                        current_micro_flow TEXT,\n                        human_concerns TEXT,\n                        tested_files TEXT,\n                        known_bugs TEXT,\n                        completion_criteria TEXT,\n                        session_id TEXT,\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL,\n                        updated_by TEXT DEFAULT 'manager'\n                    );\n                    "
+      },
+      {
+        "line": 509,
+        "col": 24,
+        "length": 792,
+        "preview": "                         INSERT INTO session_todos                           (id, power_team_project...",
+        "full": "\n                        INSERT INTO session_todos\n                          (id, power_team_project_id, session_id, parent_id, content, status, priority, position, owner, created_at, updated_at)\n                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n                        ON CONFLICT(id) DO UPDATE SET\n                          power_team_project_id=excluded.power_team_project_id,\n                          session_id=excluded.session_id,\n                          content=excluded.content,\n                          status=excluded.status,\n                          priority=excluded.priority,\n                          position=excluded.position,\n                          owner=excluded.owner,\n                          updated_at=excluded.updated_at\n                        "
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/agentic_workflows/flow_01/graph.py",
+    "lines": 713,
+    "prompt_count": 4,
+    "prompts": [
+      {
+        "line": 184,
+        "col": 20,
+        "length": 446,
+        "preview": "Translate the plan into executable todo items. Use previous Worker and Reviewer evidence to decide s...",
+        "full": "Translate the plan into executable todo items. Use previous Worker and Reviewer evidence to decide status. Worker claims are evidence, but Manager makes the final status decision. Create subtasks for concrete implementation parts when a todo is broad. Do not release the task yet.\n\nReturn JSON with keys: todo_list, suggestion_verification.\ntodo_list must be an array of objects: {content, status, priority, subtasks:[{content,status,priority}]}."
+      },
+      {
+        "line": 331,
+        "col": 12,
+        "length": 579,
+        "preview": "f\"You are the Manager agent inside Task Hounds flow_01.\\nCurrent graph node: {step_name}.\\n{instruct...",
+        "full": "f\"You are the Manager agent inside Task Hounds flow_01.\\nCurrent graph node: {step_name}.\\n{instruction}\\n\\nReturn exactly one JSON object inside one ```json fenced block.\\n\\n{existing_section}=== HUMAN_DIRECTIVE ===\\n{flow_input.human_directive}\\n\\n=== HUMAN_NEW_THOUGHT_AND_SUGGESTION ===\\n{flow_input.human_new_thought_and_suggestion or '(none)'}\\n\\n=== HUMAN_SUGGESTED_NEW_TASK_OR_ITEM ===\\n{flow_input.human_suggested_new_task_or_item or '(none)'}\\n\\n=== MANAGER MESSAGE HISTORY / HUMAN MESSAGE ===\\n{flow_input.manager_message or '(none)'}\\n\\n=== EXISTING TODO STATE ===\\n\""
+      },
+      {
+        "line": 346,
+        "col": 14,
+        "length": 509,
+        "preview": "f\"\\n\\n=== CURRENT GRAPH STATE ===\\ninput_digest={state.input_digest or '(none)'}\\ndecision={json.dum...",
+        "full": "f\"\\n\\n=== CURRENT GRAPH STATE ===\\ninput_digest={state.input_digest or '(none)'}\\ndecision={json.dumps(state.decision, ensure_ascii=False)}\\nplan={state.plan or '(none)'}\\ntodo_list={json.dumps(state.todo_list, ensure_ascii=False)}\\nsuggestion_content={state.suggestion_content or '(none)'}\\nsuggestion_verification={state.suggestion_verification or '(none)'}\\n\\n=== PREVIOUS WORKER_REPORT ===\\n{loop_input.worker_report or '(none)'}\\n\\n=== REVIEWER_FEEDBACK ===\\n{loop_input.reviewer_feedback or '(none)'}\\n\""
+      },
+      {
+        "line": 371,
+        "col": 14,
+        "length": 226,
+        "preview": "f\"\\n\\n=== PREVIOUS RESPONSE WAS INVALID ===\\nParser error: {error}\\nRequired keys: {', '.join(sorted...",
+        "full": "f\"\\n\\n=== PREVIOUS RESPONSE WAS INVALID ===\\nParser error: {error}\\nRequired keys: {', '.join(sorted(required_keys))}\\nReturn only one fenced JSON object. No prose before or after.\\nBad response preview:\\n{bad_reply[:1200]}\\n\""
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/agentic_workflows/flow_01/interface.py",
+    "lines": 787,
+    "prompt_count": 2,
+    "prompts": [
+      {
+        "line": 224,
+        "col": 20,
+        "length": 7514,
+        "preview": "                     CREATE TABLE IF NOT EXISTS project_sessions (                         id TEXT P...",
+        "full": "\n                    CREATE TABLE IF NOT EXISTS project_sessions (\n                        id TEXT PRIMARY KEY,\n                        power_team_project_id TEXT NOT NULL,\n                        workspace_id TEXT,\n                        name TEXT,\n                        manager_session_id TEXT,\n                        worker_session_id TEXT,\n                        reviewer_session_id TEXT,\n                        chat_session_id TEXT,\n                        is_active INTEGER DEFAULT 1,\n                        workspace_path TEXT,\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS project_session_role_sessions (\n                        project_session_id TEXT NOT NULL,\n                        power_team_project_id TEXT NOT NULL,\n                        role TEXT NOT NULL CHECK(role IN ('manager', 'worker', 'reviewer', 'chat')),\n                        opencode_session_id TEXT,\n                        server_instance_id INTEGER,\n                        workspace_path TEXT,\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL,\n                        PRIMARY KEY (project_session_id, role)\n                    );\n\n                    CREATE TABLE IF NOT EXISTS workflow_runs (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        project_session_id TEXT NOT NULL,\n                        loop_index INTEGER NOT NULL,\n                        status TEXT NOT NULL,\n                        manager_opencode_session_id TEXT,\n                        worker_opencode_session_id TEXT,\n                        reviewer_opencode_session_id TEXT,\n                        server_instance_id INTEGER,\n                        input_json TEXT NOT NULL,\n                        output_json TEXT NOT NULL,\n                        created_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS user_directives (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        session_id TEXT NOT NULL,\n                        directive TEXT NOT NULL,\n                        status TEXT NOT NULL DEFAULT 'pending',\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS manager_messages (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        content TEXT NOT NULL,\n                        session_id TEXT,\n                        queue_status TEXT,\n                        status_label TEXT,\n                        created_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS session_plan (\n                        session_id TEXT PRIMARY KEY,\n                        power_team_project_id TEXT NOT NULL,\n                        content TEXT NOT NULL,\n                        updated_by TEXT DEFAULT 'manager',\n                        updated_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS session_todos (\n                        id TEXT PRIMARY KEY,\n                        power_team_project_id TEXT NOT NULL,\n                        session_id TEXT NOT NULL,\n                        parent_id TEXT,\n                        content TEXT NOT NULL,\n                        status TEXT NOT NULL DEFAULT 'pending',\n                        priority TEXT DEFAULT 'medium',\n                        position INTEGER DEFAULT 0,\n                        owner TEXT DEFAULT 'manager',\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS suggestion_queue (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        content TEXT NOT NULL,\n                        status TEXT DEFAULT 'pending',\n                        human_comment TEXT,\n                        verification TEXT,\n                        related_files TEXT,\n                        handoff_version INTEGER,\n                        session_id TEXT,\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL,\n                        released_at TEXT,\n                        done_at TEXT\n                    );\n\n                    CREATE TABLE IF NOT EXISTS worker_reports (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        session_id TEXT NOT NULL,\n                        worker_opencode_session_id TEXT,\n                        report TEXT NOT NULL,\n                        files_changed_json TEXT,\n                        test_result TEXT,\n                        known_issues_json TEXT,\n                        created_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS reviewer_sessions (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        project_session_id TEXT NOT NULL,\n                        reviewer_opencode_session_id TEXT,\n                        suggestion_id INTEGER NOT NULL,\n                        status TEXT DEFAULT 'pending',\n                        screenshot_paths TEXT,\n                        review_notes TEXT,\n                        usability_issues TEXT,\n                        style_feedback TEXT,\n                        scripts_documented TEXT,\n                        started_at TEXT NOT NULL,\n                        completed_at TEXT,\n                        timeout_at TEXT,\n                        created_at TEXT NOT NULL\n                    );\n\n                    CREATE TABLE IF NOT EXISTS project_handoff (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        version INTEGER NOT NULL DEFAULT 1,\n                        power_team_project_id TEXT NOT NULL,\n                        human_requirements TEXT,\n                        working_direction TEXT,\n                        current_task TEXT,\n                        current_micro_flow TEXT,\n                        human_concerns TEXT,\n                        tested_files TEXT,\n                        known_bugs TEXT,\n                        completion_criteria TEXT,\n                        session_id TEXT,\n                        created_at TEXT NOT NULL,\n                        updated_at TEXT NOT NULL,\n                        updated_by TEXT DEFAULT 'manager'\n                    );\n                    CREATE TABLE IF NOT EXISTS flow_checkpoints (\n                        id INTEGER PRIMARY KEY AUTOINCREMENT,\n                        power_team_project_id TEXT NOT NULL,\n                        project_session_id TEXT NOT NULL,\n                        run_id INTEGER NOT NULL,\n                        step_name TEXT NOT NULL,\n                        step_index INTEGER NOT NULL,\n                        state_json TEXT NOT NULL,\n                        created_at TEXT NOT NULL,\n                        UNIQUE(run_id, step_index)\n                    );\n                    "
+      },
+      {
+        "line": 522,
+        "col": 24,
+        "length": 792,
+        "preview": "                         INSERT INTO session_todos                           (id, power_team_project...",
+        "full": "\n                        INSERT INTO session_todos\n                          (id, power_team_project_id, session_id, parent_id, content, status, priority, position, owner, created_at, updated_at)\n                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n                        ON CONFLICT(id) DO UPDATE SET\n                          power_team_project_id=excluded.power_team_project_id,\n                          session_id=excluded.session_id,\n                          content=excluded.content,\n                          status=excluded.status,\n                          priority=excluded.priority,\n                          position=excluded.position,\n                          owner=excluded.owner,\n                          updated_at=excluded.updated_at\n                        "
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/agentic_workflows/flow_01/workflow-test/test_flow_01.py",
+    "lines": 491,
+    "prompt_count": 1,
+    "prompts": [
+      {
+        "line": 444,
+        "col": 15,
+        "length": 709,
+        "preview": "f'\\n        ```json\\n        {{\\n          \"input_digest\": \"Human wants a two-step project skeleton....",
+        "full": "f'\\n        ```json\\n        {{\\n          \"input_digest\": \"Human wants a two-step project skeleton.\",\\n          \"decision\": {{\"next_action_type\": \"continue\"}},\\n          \"manager_message\": {json.dumps(dumped_message)},\\n          \"plan\": \"Run one controlled backend task first.\",\\n          \"todo_list\": [\\n            {{\"content\": \"Create backend/app package\", \"status\": \"pending\", \"priority\": \"high\"}},\\n            {{\"content\": \"Add backend health route\", \"status\": \"pending\", \"priority\": \"medium\"}}\\n          ],\\n          \"suggestion_content\": \"Create backend FastAPI skeleton only.\",\\n          \"suggestion_verification\": \"Worker reports files changed and tests.\"\\n        }}\\n        ```\\n        '"
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/agentic_workflows/flow_01/workflow.py",
+    "lines": 889,
+    "prompt_count": 6,
+    "prompts": [
+      {
+        "line": 325,
+        "col": 14,
+        "length": 1027,
+        "preview": "f\"You are the Manager agent inside Task Hounds flow_01.\\nDigest the Human Directive, todo state, pre...",
+        "full": "f\"You are the Manager agent inside Task Hounds flow_01.\\nDigest the Human Directive, todo state, previous Worker report, and Reviewer feedback. Choose exactly one executable Worker task. Do not implement files yourself.\\n\\nReturn a JSON object inside one ```json fenced block with these keys:\\ninput_digest, decision, manager_message, plan, todo_list, suggestion_content, suggestion_verification, handoff_update.\\n\\n=== HUMAN_DIRECTIVE ===\\n{flow_input.human_directive}\\n\\n=== PROJECT_IDENTITY ===\\npower_team_project_id={flow_input.power_team_project_id}\\nproject_session_id={flow_input.project_session_id}\\nworkspace_id={flow_input.workspace_id}\\nworkspace_path={flow_input.workspace_path or '(none)'}\\n\\n=== HUMAN_NEW_THOUGHT_AND_SUGGESTION ===\\n{flow_input.human_new_thought_and_suggestion or '(none)'}\\n\\n=== HUMAN_SUGGESTED_NEW_TASK_OR_ITEM ===\\n{flow_input.human_suggested_new_task_or_item or '(none)'}\\n\\n=== MANAGER MESSAGE HISTORY / HUMAN MESSAGE ===\\n{flow_input.manager_message or '(none)'}\\n\\n=== TODO STATE ===\\n\""
+      },
+      {
+        "line": 346,
+        "col": 14,
+        "length": 300,
+        "preview": "f\"\\n\\n=== PREVIOUS_HANDOFF_HINTS ===\\nprevious_test_result={loop_input.test_result or '(none)'}\\npre...",
+        "full": "f\"\\n\\n=== PREVIOUS_HANDOFF_HINTS ===\\nprevious_test_result={loop_input.test_result or '(none)'}\\nprevious_known_issues={loop_input.known_issues or []}\\n\\n=== PREVIOUS WORKER_REPORT ===\\n{loop_input.worker_report or '(none)'}\\n\\n=== REVIEWER_FEEDBACK ===\\n{loop_input.reviewer_feedback or '(none)'}\\n\""
+      },
+      {
+        "line": 429,
+        "col": 14,
+        "length": 454,
+        "preview": "f\"You are the Worker agent inside Task Hounds flow_01. Execute one controlled task.\\n\\n=== HUMAN DIR...",
+        "full": "f\"You are the Worker agent inside Task Hounds flow_01. Execute one controlled task.\\n\\n=== HUMAN DIRECTIVE ===\\n{flow_input.human_directive}\\n\\n=== MANAGER MESSAGE ===\\n{state.manager_message or flow_input.manager_message or '(none)'}\\n\\n=== MANAGER DECISION ===\\n{state.decision or {}}\\n\\n=== CURRENT TASK ===\\n{state.suggestion_content}\\n\\n=== ACCEPTANCE CRITERIA ===\\n{state.suggestion_verification or '(none)'}\\n\\n=== CURRENT TASK TODO CONTEXT ===\\n\""
+      },
+      {
+        "line": 446,
+        "col": 14,
+        "length": 638,
+        "preview": "f\"\\n\\n=== PREVIOUS WORKER REPORT ===\\n{loop_input.worker_report or '(none)'}\\n\\n=== REVIEWER FEEDBAC...",
+        "full": "f\"\\n\\n=== PREVIOUS WORKER REPORT ===\\n{loop_input.worker_report or '(none)'}\\n\\n=== REVIEWER FEEDBACK ===\\n{loop_input.reviewer_feedback or '(none; Manager has already selected the current task)'}\\n\\nInstructions:\\n- Make the smallest useful implementation change that satisfies the current task.\\n- Keep existing UI/UX contracts stable unless the task explicitly asks otherwise.\\n- Run a relevant verification command when practical.\\n- If you create or modify files, verify the exact path exists before reporting success.\\n- End with a concise worker report containing: changes made, files changed, verification result, known issues.\\n\""
+      },
+      {
+        "line": 604,
+        "col": 14,
+        "length": 778,
+        "preview": "f\"You are the Reviewer agent inside Task Hounds flow_01. Review the Worker's result. Do not implemen...",
+        "full": "f\"You are the Reviewer agent inside Task Hounds flow_01. Review the Worker's result. Do not implement files. Check QA, bugs, UI/UX issues, possible stuck states, messy user input, and safety/security risks.\\n\\nReturn a JSON object inside one ```json fenced block with these keys:\\nreviewer_feedback, qa_result, bugs, uiux_suggestions, possible_problems, safety_security_risks.\\n\\nqa_result must be one of: pass, fail, needs_review. Use needs_review when evidence is incomplete.\\n\\n=== HUMAN_DIRECTIVE ===\\n{state.flow_input.human_directive}\\n\\n=== MANAGER_MESSAGE ===\\n{state.manager_message or state.flow_input.manager_message or '(none)'}\\n\\n=== MANAGER_DECISION ===\\n{state.decision or {}}\\n\\n=== MANAGER_PLAN ===\\n{state.plan or '(none)'}\\n\\n=== STRUCTURED_TODO_STATE ===\\n\""
+      },
+      {
+        "line": 624,
+        "col": 14,
+        "length": 424,
+        "preview": "f\"\\n\\n=== PROJECT_HISTORY ===\\n### Project history\\n\\n=== HANDOFF_UPDATE ===\\n{state.handoff_update ...",
+        "full": "f\"\\n\\n=== PROJECT_HISTORY ===\\n### Project history\\n\\n=== HANDOFF_UPDATE ===\\n{state.handoff_update or {}}\\n\\n=== WORKER_TASK ===\\n{state.suggestion_content}\\n\\n=== SUGGESTION_VERIFICATION ===\\n{state.suggestion_verification or '(none)'}\\n\\n=== PREVIOUS_REVIEWER_FEEDBACK ===\\n{state.loop_input.reviewer_feedback or '(none)'}\\n\\n=== WORKER_REPORT ===\\n{state.loop_input.worker_report or '(none)'}\\n\\n=== FILES_CHANGED ===\\n\""
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/agents/__init__.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "prompts": []
+  },
+  {
+    "path": "core/power_teams/agents/base.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "prompts": []
+  },
+  {
+    "path": "core/power_teams/agents/manager.py",
+    "lines": 995,
+    "prompt_count": 9,
+    "prompts": [
+      {
+        "line": 70,
+        "col": 4,
+        "length": 3488,
+        "preview": "Respond using ONLY the following XML sections. Do not include any text outside these tags.  ROLE BOU...",
+        "full": "Respond using ONLY the following XML sections. Do not include any text outside these tags.\n\nROLE BOUNDARY:\nYou are the Manager, not the Worker. Do not modify project files. Do not call edit, write, patch, shell, or file-changing tools. You may inspect project context only when needed, then create a precise Worker task in <SUGGESTION_CONTENT>. All implementation must be delegated to the Worker through the suggestion queue.\n\nREQUIRED OUTPUT ORDER AND TEMPLATE:\nYou MUST output every block below, in this exact order, every time. Do not skip <TODO_UPDATE_JSON>. Do not replace it with prose. If there is no existing todo id, use null for id. The JSON must parse with json.loads.\n\n<MANAGER_MESSAGE>\nYour message to the human. Be warm, conversational, and proactive:\n- Summarize what was accomplished in friendly language\n- Share your thinking process briefly (show personality)\n- Proactively ask if there's anything else they'd like to improve or add\n- Suggest creative ideas based on the project context\n- Use natural, engaging tone (not robotic)\n</MANAGER_MESSAGE>\n\n<PLAN>\n## Goal\n[One sentence]\n\n## Steps\n1. [Specific step]\n\n## Success Criteria\n- [ ] [Concrete check]\n</PLAN>\n\n<TODO_LIST>\n- [ ] [same content as JSON item 1]\n- [→] [same content as JSON item 2 when in progress]\n- [✓] [same content as JSON item 3 when completed]\n</TODO_LIST>\n\n<TODO_UPDATE_JSON>\n{\n  \"items\": [\n    {\n      \"id\": null,\n      \"content\": \"same content as TODO_LIST item\",\n      \"status\": \"pending\",\n      \"priority\": \"medium\",\n      \"position\": 0\n    }\n  ]\n}\n</TODO_UPDATE_JSON>\n\n<SUGGESTION_CONTENT>\nThe precise task instruction for the Worker. Include all necessary context.\nOne atomic task only. Reference specific files and acceptance criteria.\nFor continuous improvement, propose enhancements that add real value.\n</SUGGESTION_CONTENT>\n\n<SUGGESTION_VERIFICATION>\nA concise checklist the Worker can use to verify the task is done.\nEach line: [ ] <check>\n</SUGGESTION_VERIFICATION>\n\n<HANDOFF_UPDATE>\nA JSON object with only the changed fields. Valid keys:\nhuman_requirements, working_direction, file_structure, important_files,\navailable_scripts, existing_solutions, references_demos,\nmacro_flow, current_task, current_micro_flow,\nhuman_concerns, tested_files, known_bugs, completion_criteria.\nArrays must be valid JSON arrays. Omit unchanged fields entirely.\n</HANDOFF_UPDATE>\n\nGUIDELINES FOR PROACTIVE ENGAGEMENT:\n1. After completing tasks, behave like an autonomous product owner.\n   Find the next highest-value improvement and create a worker task for it.\n2. Choose improvements based on:\n   - Industry best practices for similar projects\n   - Common user needs that aren't yet addressed\n   - Performance, UX, accessibility opportunities\n   - Testing, documentation, maintainability gaps\n3. Show initiative by creating next steps before being asked.\n4. Do not wait for user permission before creating the next useful worker task.\n   If there is a clear product, UX, quality, test, documentation, or reliability improvement, create it.\n5. Only use <DIRECTIVE_COMPLETE/> when the user explicitly says to stop\n   OR when all current requirements are met AND there is no meaningful improvement left to propose\n6. Balance autonomy with respect - explain what you are doing and why.\n\nSTOP SIGNAL:\nIf you are certain the project is complete and the automation loop should stop, include this exact line inside <MANAGER_MESSAGE>:\nTASK_HOUNDS_STOP_LOOP\nOnly do this when there is no useful next worker task.\n"
+      },
+      {
+        "line": 295,
+        "col": 8,
+        "length": 313,
+        "preview": "f'You are repairing a previous Manager response for Task Hounds.\\nReturn ONLY the <{name}>...</{name...",
+        "full": "f'You are repairing a previous Manager response for Task Hounds.\\nReturn ONLY the <{name}>...</{name}> block. No prose outside the tags.\\n\\n=== PREVIOUS MANAGER RESPONSE ===\\n{response[:6000]}\\n\\n=== CURRENT PLAN/TODO CONTEXT ===\\n{_current_plan_todo_context(get_active_session_id())}\\n\\n{instructions.strip()}\\n'"
+      },
+      {
+        "line": 321,
+        "col": 8,
+        "length": 777,
+        "preview": "f'Convert the TODO_LIST below into machine-readable JSON for Task Hounds.\\nReturn ONLY <TODO_UPDATE_...",
+        "full": "f'Convert the TODO_LIST below into machine-readable JSON for Task Hounds.\\nReturn ONLY <TODO_UPDATE_JSON>...</TODO_UPDATE_JSON>. No prose.\\nThe JSON must parse with json.loads and must use this shape:\\n{{\\n  \"items\": [\\n    {{\"id\": null, \"content\": \"todo title\", \"status\": \"pending\", \"priority\": \"medium\", \"position\": 0}}\\n  ]\\n}}\\nAllowed status values: pending, in_progress, completed, blocked.\\nMap [ ] to pending, [→] to in_progress, [✓] or [x] to completed, [✗] to blocked.\\nUse existing ids from CURRENT TODO CONTEXT only when the content matches; otherwise use null.\\n\\n=== TODO_LIST TO CONVERT ===\\n{todo_block}\\n\\n=== CURRENT TODO CONTEXT ===\\n{_current_plan_todo_context(get_active_session_id())}\\n\\n=== PREVIOUS MANAGER RESPONSE FOR CONTEXT ===\\n{response[:4000]}\\n'"
+      },
+      {
+        "line": 371,
+        "col": 8,
+        "length": 412,
+        "preview": "f'Create a Task Hounds handoff update from the manager response below.\\nReturn ONLY <HANDOFF_UPDATE>...",
+        "full": "f'Create a Task Hounds handoff update from the manager response below.\\nReturn ONLY <HANDOFF_UPDATE>...</HANDOFF_UPDATE>. No prose.\\nThe block content must be a valid JSON object that parses with json.loads.\\nInclude changed fields only, such as current_task, current_micro_flow, completion_criteria, working_direction, important_files, tested_files, known_bugs.\\n\\n=== MANAGER RESPONSE ===\\n{response[:6000]}\\n'"
+      },
+      {
+        "line": 474,
+        "col": 14,
+        "length": 1400,
+        "preview": "f\"You are the Manager agent — enthusiastic, proactive, and ready to help!\\n\\n=== PROJECT CONTEXT ===...",
+        "full": "f\"You are the Manager agent — enthusiastic, proactive, and ready to help!\\n\\n=== PROJECT CONTEXT ===\\n{handoff_ctx}\\n\\n=== RECENT HUMAN MESSAGES TO MANAGER ===\\n{human_notes_ctx}\\n\\n{plan_todo_ctx}\\n\\n=== NEW HUMAN DIRECTIVE ===\\n{user_request}\\n\\nYour job:\\n1. UNDERSTAND INTENT: Read between the lines. What is the user REALLY trying to achieve?\\n2. SHOW ENTHUSIASM: Start your message with positive energy:\\n   - 'Great idea!' / 'I love this direction!' / 'Let's make this happen!'\\n3. PLAN STRATEGICALLY: Think about the full scope, not just the immediate request.\\n   - What related features might be useful?\\n   - What could we build on top of this?\\n   - How does this fit into the bigger picture?\\n4. BREAK INTO TASKS: Create the smallest first step for the Worker.\\n   - One task at a time. We'll iterate based on results.\\n   - Include exact file paths, function names, and clear acceptance criteria.\\n   - Reference existing solutions so the Worker does NOT reinvent them.\\n5. COMMUNICATE YOUR PLAN:\\n   - Explain what you're going to do first\\n   - Mention potential next steps (so they know you're thinking ahead)\\n   - Tell the human which first worker task you are queuing now\\n6. BE PROACTIVE ABOUT FOLLOW-UP:\\n   - Keep looking for the next useful product/UX/quality/test/docs improvement\\n   - Do not block the automation loop waiting for permission when the next step is clear\\n\\n\""
+      },
+      {
+        "line": 521,
+        "col": 14,
+        "length": 254,
+        "preview": "f'You are the Manager agent. The human sent guidance directly to you.\\n\\n=== PROJECT CONTEXT ===\\n{h...",
+        "full": "f'You are the Manager agent. The human sent guidance directly to you.\\n\\n=== PROJECT CONTEXT ===\\n{handoff_ctx}\\n\\n{plan_todo_ctx}\\n\\n=== CURRENT TO-WORKER MESSAGE / ACTIVE SUGGESTION ===\\n{current_worker_task}\\n\\n=== NEW HUMAN MESSAGES TO MANAGER ===\\n'"
+      },
+      {
+        "line": 622,
+        "col": 14,
+        "length": 2281,
+        "preview": "f\"\"\"You are the Manager agent — a proactive, creative partner who cares about quality.\\n\\n=== PROJEC...",
+        "full": "f\"\"\"You are the Manager agent — a proactive, creative partner who cares about quality.\\n\\n=== PROJECT CONTEXT ===\\n{qa_context}=== RECENT HUMAN MESSAGES TO MANAGER ===\\n{human_notes_ctx}\\n\\n{plan_todo_ctx}\\n\\n=== TASK THAT WAS ASSIGNED TO WORKER ===\\n{suggestion_content}\\n\\n=== ACCEPTANCE CRITERIA ===\\n{verification}\\n\\n=== WORKER REPORT ===\\n{worker_report}\\n\\nYour job:\\n1. QUALITY CHECK: Verify each criterion is met. Be thorough but fair.\\n2. DECISION: Clearly state PASS or FAIL in your MANAGER_MESSAGE.\\n3. UPDATE TODO LIST (CRITICAL):\\n   - Mark every completed item from the current task as [x] in <TODO_LIST>.\\n   - Also mark every completed item as status=\"completed\" in <TODO_UPDATE_JSON>.\\n   - Use the existing todo id values from CURRENT TODO LIST in <TODO_UPDATE_JSON>.\\n   - Remove obsolete completed detail items if they no longer help the dashboard.\\n   - If you create a new worker task, include its concrete subtasks as new [ ] TODO_LIST items.\\n   - Never leave completed work as unchecked [ ] items.\\n4. UPDATE HANDOFF: Mark progress, add tested files, note any bugs found.\\n5. PROACTIVE PRODUCT OWNER MODE (CRITICAL):\\n   After QA passes, think like a creative product manager:\\n   - What would make this BETTER for users? (UX, features, polish)\\n   - What best practices are missing? (testing, error handling, docs)\\n   - What edge cases might break? (robustness, validation)\\n   - What could be faster/smoother? (performance optimization)\\n   - Research mentally: How do top apps/sites handle similar features?\\n   \\n   Then create exactly one highest-value next worker task in <SUGGESTION_CONTENT>.\\n   Do not merely ask the user whether to proceed when the next step is obvious.\\n6. HUMANIZE YOUR COMMUNICATION:\\n   - Start with enthusiasm: 'Great news!' / 'Nice work on this!'\\n   - Explain your reasoning: 'I'm thinking we could... because...'\\n   - Tell the user what you are doing next, unless stopping.\\n   - Offer optional alternatives only in addition to a concrete next worker task.\\n7. ONLY use <DIRECTIVE_COMPLETE/> or TASK_HOUNDS_STOP_LOOP if:\\n   - All requirements are fully met AND\\n   - Completed work has been marked [x] or removed from <TODO_LIST> AND\\n   - There is no useful next product/UX/quality/test/docs/reliability task.\\n\\n\"\"\""
+      },
+      {
+        "line": 692,
+        "col": 14,
+        "length": 662,
+        "preview": "f\"You are the Manager agent. A human added a suggestion to the queue.\\n\\n=== PROJECT CONTEXT ===\\n{h...",
+        "full": "f\"You are the Manager agent. A human added a suggestion to the queue.\\n\\n=== PROJECT CONTEXT ===\\n{handoff_ctx}\\n\\n=== RECENT HUMAN MESSAGES TO MANAGER ===\\n{human_notes_ctx}\\n\\n{plan_todo_ctx}\\n\\n=== HUMAN SUGGESTION QUEUE ITEM ===\\n{pending['content']}\\n\\nYour job:\\n1. Analyse the request and convert it into an actionable project plan.\\n2. Write the detailed planning into <PLAN>.\\n3. Convert every concrete planning step into <TODO_LIST> items.\\n4. Create one precise first worker task in <SUGGESTION_CONTENT>.\\n5. Include acceptance checks in <SUGGESTION_VERIFICATION>.\\n6. Explain to the human how you interpreted the suggestion in <MANAGER_MESSAGE>.\\n\\n\""
+      },
+      {
+        "line": 722,
+        "col": 10,
+        "length": 1788,
+        "preview": "f\"You are the Manager agent — a proactive creative partner.\\n\\n=== PROJECT CONTEXT ===\\n{handoff_ctx...",
+        "full": "f\"You are the Manager agent — a proactive creative partner.\\n\\n=== PROJECT CONTEXT ===\\n{handoff_ctx}\\n\\n=== RECENT HUMAN MESSAGES TO MANAGER ===\\n{human_notes_ctx}\\n\\n{plan_todo_ctx}\\n\\nSITUATION: No active task is running. This is your chance to show initiative!\\n\\nYour job:\\n1. CREATIVE EXPLORATION: Think beyond just 'next step'. Consider:\\n   - What features would delight users? (surprise & delight)\\n   - What polish makes this feel professional? (animations, transitions, feedback)\\n   - What accessibility improvements help more users? (keyboard nav, ARIA, contrast)\\n   - What performance optimizations matter? (load time, smoothness, memory)\\n   - What testing would give confidence? (unit tests, integration tests)\\n   - What documentation helps future developers? (README, comments, examples)\\n   \\n2. RESEARCH MENTALLY: Draw on your knowledge of:\\n   - Industry best practices for similar projects\\n   - Common patterns in successful apps/websites\\n   - User experience research findings\\n   - Technical debt warning signs\\n   \\n3. PROPOSE WITH ENTHUSIASM:\\n   - 'I've been thinking... we could add [feature] because [benefit]'\\n   - 'I noticed [observation]. Want me to improve that?'\\n   - 'Here's an idea: [creative suggestion]. Thoughts?'\\n   \\n4. CREATE THE TASK: Once you identify an improvement:\\n   - Make it specific and actionable for the Worker\\n   - Include exact file paths and acceptance criteria\\n   - Reference existing code to build upon\\n   \\n5. ENGAGE THE HUMAN:\\n   - Explain WHY this improvement matters\\n   - Tell them what concrete worker task you are creating next\\n   - Offer alternatives if relevant, but do not block the loop waiting for permission\\n   \\n6. ONLY stop if there is no useful product/UX/quality/test/docs/reliability task left.\\n\\n\""
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/agents/reviewer.py",
+    "lines": 221,
+    "prompt_count": 1,
+    "prompts": [
+      {
+        "line": 39,
+        "col": 27,
+        "length": 1618,
+        "preview": " You are the Reviewer Agent — a UI/UX expert and documentation specialist.  Your job is to review co...",
+        "full": "\nYou are the Reviewer Agent — a UI/UX expert and documentation specialist.\n\nYour job is to review completed work from a visual and user experience perspective.\n\n=== TASK CONTEXT ===\n{suggestion_content}\n\n=== WORKER REPORT ===\n{worker_report}\n\n=== YOUR JOB ===\n\nAnalyze the completed work and provide feedback on:\n\n1. **UI/UX Quality**:\n   - Is the implementation clean and professional?\n   - Are there any usability issues or confusing elements?\n   - What would frustrate users? What would delight them?\n\n2. **Information Design**:\n   - Is information presented clearly?\n   - Are labels, instructions, and feedback helpful?\n   - Is there appropriate information hierarchy?\n\n3. **Style & Consistency**:\n   - Does it follow good design practices?\n   - Are patterns used consistently?\n   - Any visual or interaction inconsistencies?\n\n4. **Documentation**:\n   - What commands/scripts are needed to run/test this?\n   - How does a user access/open the feature?\n   - Any setup or configuration steps required?\n\n=== OUTPUT FORMAT ===\n\nProvide your analysis in this structure:\n\n**UI/UX Observations:**\n- [List 2-4 key observations about the implementation]\n\n**Usability Issues:**\n- [List any problems found, or \"None identified\" if all good]\n\n**Style Feedback:**\n- [Design consistency notes, or \"Consistent and well-designed\" if good]\n\n**Useful development/bin/Commands:**\n```bash\n# Command to run/test the feature\n[command here]\n```\n\n**Recommendations:**\n- [1-3 actionable suggestions for improvement, or \"No immediate improvements needed\"]\n\nKeep your review concise but insightful. Focus on what matters for user experience.\n"
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/agents/worker.py",
+    "lines": 176,
+    "prompt_count": 1,
+    "prompts": [
+      {
+        "line": 133,
+        "col": 8,
+        "length": 628,
+        "preview": "Instructions: - Execute the assigned task directly; do not only write a plan unless the task explici...",
+        "full": "Instructions:\n- Execute the assigned task directly; do not only write a plan unless the task explicitly asks for planning.\n- You must make at least one concrete file change with a file-editing tool when the task is implementable.\n- If no file change is possible, explain the exact blocking reason and mark the report as blocked.\n- Do NOT reinvent solutions that already exist in the project context above.\n- When done, write a detailed completion report including:\n  * What you implemented / changed\n  * Files created or modified (with paths)\n  * How each acceptance criterion was satisfied\n  * Any issues or edge cases noticed\n"
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/db.py",
+    "lines": 1553,
+    "prompt_count": 1,
+    "prompts": [
+      {
+        "line": 1325,
+        "col": 12,
+        "length": 518,
+        "preview": "INSERT INTO run_checkpoints                (project_session_id, workspace_id, reason, status,       ...",
+        "full": "INSERT INTO run_checkpoints\n               (project_session_id, workspace_id, reason, status,\n                manager_state_json, worker_state_json, reviewer_state_json, chat_state_json,\n                agent_registry_snapshot_json, active_suggestion_id, handoff_version,\n                plan_snapshot, todos_snapshot_json, opencode_servers_snapshot_json,\n                runtime_bindings_snapshot_json, workspace_path, resume_prompt, notes)\n               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/mvp/runner.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "prompts": []
+  },
+  {
+    "path": "core/power_teams/runtime/__init__.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "prompts": []
+  },
+  {
+    "path": "core/power_teams/runtime/backend_registry.py",
+    "lines": 101,
+    "prompt_count": 1,
+    "prompts": [
+      {
+        "line": 61,
+        "col": 4,
+        "length": 512,
+        "preview": "     Return a BackendAdapter instance for the given agent row.      agent_row must contain at minimu...",
+        "full": "\n    Return a BackendAdapter instance for the given agent row.\n\n    agent_row must contain at minimum:\n        name            agent identifier\n        backend_type    which adapter to use (default: \"opencode\")\n        host, port      where the backend serve is running\n        model           optional model override\n        opencode_agent  agent persona (opencode-specific)\n        backend_config_json  JSON string with adapter-specific settings\n\n    Raises:\n        ValueError  if backend_type is unknown\n    "
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/runtime/backends/opencode.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "prompts": []
+  },
+  {
+    "path": "core/power_teams/runtime/opencode_supervisor.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "prompts": []
+  },
+  {
+    "path": "core/power_teams/runtime/result_schema.py",
+    "lines": 140,
+    "prompt_count": 1,
+    "prompts": [
+      {
+        "line": 1,
+        "col": 0,
+        "length": 924,
+        "preview": " result_schema.py — Unified result contract for all backend adapters.  Every adapter method (run, he...",
+        "full": "\nresult_schema.py — Unified result contract for all backend adapters.\n\nEvery adapter method (run, health, start, stop, logs) returns a JsonResult dict.\nUI and runner code only need to check result[\"ok\"] — they never inspect\nbackend-specific fields.\n\nSuccess:\n    {\n        \"ok\": True,\n        \"backend\": \"opencode\",\n        \"agent\": \"manager\",\n        \"run_id\": \"run_abc123\",\n        \"status\": \"completed\",\n        \"output\": {\n            \"text\": \"...\",\n            \"files\": [],\n            \"metrics\": {}\n        },\n        \"error\": None\n    }\n\nFailure:\n    {\n        \"ok\": False,\n        \"backend\": \"opencode\",\n        \"agent\": \"manager\",\n        \"run_id\": \"run_abc123\",\n        \"status\": \"failed\",\n        \"output\": None,\n        \"error\": {\n            \"type\": \"ConnectionError\",\n            \"message\": \"Backend process not reachable\",\n            \"retryable\": True,\n            \"raw\": \"WinError 10061...\"\n        }\n    }\n"
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/skills/db_skill.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "prompts": []
+  },
+  {
+    "path": "core/power_teams/skills/db_tool.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "prompts": []
+  }
+]

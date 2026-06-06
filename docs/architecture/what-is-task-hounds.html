@@ -1,0 +1,737 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Task Hounds — Multi-Agent Orchestration System</title>
+  <meta name="description" content="Task Hounds is a multi-agent orchestration system for autonomous software development." />
+  <style>
+    :root {
+      --bg: #070A12;
+      --bg-soft: #0E1424;
+      --card: rgba(255,255,255,0.075);
+      --card-strong: rgba(255,255,255,0.12);
+      --line: rgba(255,255,255,0.14);
+      --text: #EEF4FF;
+      --muted: #AEBAD1;
+      --muted-2: #78849A;
+      --brand: #8B5CF6;
+      --brand-2: #06B6D4;
+      --brand-3: #22C55E;
+      --warning: #F59E0B;
+      --danger: #F43F5E;
+      --shadow: 0 24px 80px rgba(0,0,0,0.45);
+      --radius: 24px;
+      --max: 1160px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "Noto Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(139,92,246,0.40), transparent 34%),
+        radial-gradient(circle at 84% 12%, rgba(6,182,212,0.34), transparent 30%),
+        radial-gradient(circle at 50% 80%, rgba(34,197,94,0.16), transparent 32%),
+        var(--bg);
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .08;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .nav {
+      position: sticky;
+      top: 12px;
+      z-index: 20;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(7,10,18,.72);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 10px 40px rgba(0,0,0,.28);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: .2px;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      box-shadow: 0 0 32px rgba(139,92,246,.45);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav-links a {
+      padding: 8px 12px;
+      color: var(--muted);
+      border-radius: 999px;
+      font-size: 14px;
+    }
+
+    .nav-links a:hover {
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+    }
+
+    .hero {
+      min-height: 86vh;
+      display: grid;
+      grid-template-columns: 1.08fr .92fr;
+      align-items: center;
+      gap: 42px;
+      padding: 84px 0 56px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid rgba(139,92,246,.35);
+      border-radius: 999px;
+      background: rgba(139,92,246,.12);
+      color: #DCD2FF;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 22px 0 16px;
+      font-size: clamp(44px, 7vw, 92px);
+      line-height: .92;
+      letter-spacing: -0.07em;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #fff 8%, #C7D2FE 38%, #67E8F9 74%, #BBF7D0 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .lead {
+      margin: 0 0 28px;
+      max-width: 660px;
+      color: var(--muted);
+      font-size: clamp(18px, 2.2vw, 23px);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 26px 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 18px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.08);
+      font-weight: 800;
+      transition: transform .2s, background .2s, border-color .2s;
+    }
+
+    .btn:hover { transform: translateY(-2px); background: rgba(255,255,255,.13); }
+    .btn.primary {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      border-color: transparent;
+      box-shadow: 0 18px 50px rgba(6,182,212,.22);
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255,255,255,.055);
+      font-size: 13px;
+    }
+
+    .hero-card {
+      position: relative;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: calc(var(--radius) + 10px);
+      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.055));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero-card::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      background: radial-gradient(circle at 20% 10%, rgba(139,92,246,.32), transparent 30%),
+                  radial-gradient(circle at 90% 20%, rgba(6,182,212,.24), transparent 28%);
+      pointer-events: none;
+    }
+
+    .terminal {
+      position: relative;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(4,7,14,.86);
+    }
+
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.11);
+      background: rgba(255,255,255,.06);
+    }
+
+    .dot { width: 11px; height: 11px; border-radius: 999px; background: var(--danger); }
+    .dot:nth-child(2) { background: var(--warning); }
+    .dot:nth-child(3) { background: var(--brand-3); }
+
+    .terminal pre {
+      margin: 0;
+      padding: 22px;
+      overflow: auto;
+      color: #BDE9FF;
+      font-size: 14px;
+    }
+
+    section {
+      padding: 74px 0;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 22px;
+      margin-bottom: 26px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .section-head p {
+      max-width: 560px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      padding: 22px;
+      box-shadow: 0 14px 48px rgba(0,0,0,.18);
+    }
+
+    .card strong { color: #fff; }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .icon {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 16px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(139,92,246,.24), rgba(6,182,212,.18));
+      border: 1px solid rgba(255,255,255,.12);
+      font-size: 22px;
+    }
+
+    .diagram {
+      padding: 24px;
+      overflow: auto;
+    }
+
+    .diagram svg {
+      width: 100%;
+      min-width: 720px;
+      height: auto;
+      display: block;
+    }
+
+    .compare {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 18px;
+      border-style: hidden;
+      box-shadow: 0 0 0 1px var(--line);
+      background: rgba(255,255,255,.055);
+    }
+
+    .compare th, .compare td {
+      padding: 15px 14px;
+      border: 1px solid rgba(255,255,255,.11);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .compare th {
+      color: #fff;
+      background: rgba(255,255,255,.08);
+      font-size: 14px;
+    }
+
+    .compare td { color: var(--muted); }
+    .yes { color: #86EFAC; font-weight: 800; }
+    .no { color: #FDA4AF; font-weight: 800; }
+    .warn { color: #FCD34D; font-weight: 800; }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 14px;
+    }
+
+    .step {
+      position: relative;
+      padding-left: 62px;
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .codebox {
+      margin-top: 14px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 18px;
+      background: rgba(3,6,13,.82);
+      overflow: hidden;
+    }
+
+    .codebox pre {
+      margin: 0;
+      padding: 18px;
+      color: #D7F7FF;
+      overflow: auto;
+      font-size: 14px;
+    }
+
+    .tabs {
+      display: grid;
+      gap: 14px;
+    }
+
+    details.lang {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.055);
+      overflow: hidden;
+    }
+
+    details.lang summary {
+      cursor: pointer;
+      padding: 18px 22px;
+      font-size: 20px;
+      font-weight: 900;
+      background: rgba(255,255,255,.055);
+    }
+
+    details.lang .lang-body {
+      padding: 22px;
+      color: var(--muted);
+    }
+
+    .roadmap {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+
+    .milestone {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      background: rgba(255,255,255,.065);
+      min-height: 140px;
+    }
+
+    .milestone .version {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(139,92,246,.18);
+      color: #DDD6FE;
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .milestone p { margin: 0; color: var(--muted); }
+
+    .footer {
+      padding: 64px 0 42px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .footer .big {
+      display: block;
+      margin-bottom: 8px;
+      color: #fff;
+      font-size: clamp(24px, 4vw, 44px);
+      font-weight: 950;
+      letter-spacing: -0.04em;
+    }
+
+    @media (max-width: 920px) {
+      .hero { grid-template-columns: 1fr; padding-top: 54px; }
+      .section-head { display: block; }
+      .section-head p { margin-top: 12px; }
+      .grid.cols-4, .grid.cols-3, .grid.cols-2, .roadmap { grid-template-columns: 1fr; }
+      .nav { align-items: flex-start; border-radius: 24px; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+
+  <header class="shell nav">
+    <a class="brand" href="#top" aria-label="Task Hounds home">
+      <span class="brand-mark">⚡</span>
+      <span>Task Hounds</span>
+    </a>
+    <nav class="nav-links" aria-label="Main navigation">
+      <a href="#features">Features</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#quickstart">Quick Start</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#contribute">Contribute</a>
+    </nav>
+  </header>
+
+  <main id="top" class="shell">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">🤖 Manager · Worker · Reviewer</span>
+        <h1><span class="gradient-text">Multi-agent software teams that keep moving.</span></h1>
+        <p class="lead">
+          Task Hounds coordinates specialised AI agents for autonomous software development:
+          planning, implementation, review, persistence, dashboards, and backend integrations.
+        </p>
+        <div class="actions">
+          <a class="btn primary" href="#quickstart">🚀 Start building</a>
+          <a class="btn" href="#architecture">🧠 View architecture</a>
+          <a class="btn" href="#contribute">🤝 Submit PR</a>
+        </div>
+        <div class="badges" aria-label="Project badges">
+          <span class="badge">Python 3.11+</span>
+          <span class="badge">React + Vite</span>
+          <span class="badge">SQLite</span>
+          <span class="badge">OpenCode</span>
+          <span class="badge">Hermes</span>
+          <span class="badge">OpenClaw</span>
+        </div>
+      </div>
+
+      <aside class="hero-card" aria-label="Terminal preview">
+        <div class="terminal">
+          <div class="terminal-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          <pre><code>$ python -m powerteams run \
+  --task "Build REST API" \
+  --mode continuous \
+  --max-iterations 50
+
+[manager] decomposing task...
+[worker] implementing changes...
+[reviewer] checking quality gates...
+[db] state persisted to SQLite
+[dashboard] live at localhost:5173</code></pre>
+        </div>
+      </aside>
+    </section>
+
+    <section id="features">
+      <div class="section-head">
+        <h2>Built for autonomous development</h2>
+        <p>Set the direction once, then let specialised agents plan, build, review, and iterate with shared state.</p>
+      </div>
+      <div class="grid cols-4">
+        <article class="card"><div class="icon">🧠</div><h3>Manager Agent</h3><p>Breaks goals into actionable tasks, chooses priorities, and coordinates the loop.</p></article>
+        <article class="card"><div class="icon">🔨</div><h3>Worker Agent</h3><p>Implements focused changes without becoming its own reviewer or product owner.</p></article>
+        <article class="card"><div class="icon">🛡️</div><h3>Reviewer Agent</h3><p>Checks quality, catches regressions, and verifies fixes before the next iteration.</p></article>
+        <article class="card"><div class="icon">📊</div><h3>Live Dashboard</h3><p>React + Vite UI for monitoring agent activity, progress, and runtime state.</p></article>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <div class="section-head">
+        <h2>Architecture</h2>
+        <p>Task Hounds is backend-agnostic: OpenCode, Hermes, OpenClaw, or your own backend through a clean interface.</p>
+      </div>
+      <div class="card diagram">
+        <svg viewBox="0 0 1100 560" role="img" aria-label="Task Hounds architecture diagram">
+          <defs>
+            <linearGradient id="g1" x1="0" x2="1">
+              <stop stop-color="#8B5CF6"/>
+              <stop offset="1" stop-color="#06B6D4"/>
+            </linearGradient>
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity=".35"/>
+            </filter>
+          </defs>
+          <rect x="40" y="34" width="1020" height="340" rx="34" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.22)"/>
+          <text x="550" y="82" text-anchor="middle" fill="#EEF4FF" font-size="28" font-weight="900">Task Hounds Orchestrator</text>
+
+          <g filter="url(#shadow)">
+            <rect x="120" y="130" width="230" height="110" rx="24" fill="url(#g1)"/>
+            <text x="235" y="178" text-anchor="middle" fill="#fff" font-size="23" font-weight="900">Manager</text>
+            <text x="235" y="208" text-anchor="middle" fill="#EDE9FE" font-size="15">Plan · Prioritise</text>
+
+            <rect x="435" y="130" width="230" height="110" rx="24" fill="rgba(6,182,212,.26)" stroke="rgba(103,232,249,.45)"/>
+            <text x="550" y="178" text-anchor="middle" fill="#fff" font-size="23" font-weight="900">Worker</text>
+            <text x="550" y="208" text-anchor="middle" fill="#CFFAFE" font-size="15">Implement · Patch</text>
+
+            <rect x="750" y="130" width="230" height="110" rx="24" fill="rgba(34,197,94,.22)" stroke="rgba(134,239,172,.42)"/>
+            <text x="865" y="178" text-anchor="middle" fill="#fff" font-size="23" font-weight="900">Reviewer</text>
+            <text x="865" y="208" text-anchor="middle" fill="#DCFCE7" font-size="15">Verify · QA</text>
+          </g>
+
+          <path d="M350 185 L435 185" stroke="#A5B4FC" stroke-width="4" stroke-linecap="round"/>
+          <path d="M665 185 L750 185" stroke="#67E8F9" stroke-width="4" stroke-linecap="round"/>
+
+          <rect x="190" y="286" width="720" height="64" rx="22" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.18)"/>
+          <text x="550" y="326" text-anchor="middle" fill="#EEF4FF" font-size="21" font-weight="800">Shared SQLite Database · Structured Logs · Runtime State</text>
+
+          <path d="M235 240 L235 286 M550 240 L550 286 M865 240 L865 286" stroke="rgba(255,255,255,.32)" stroke-width="3" stroke-linecap="round"/>
+
+          <rect x="270" y="410" width="170" height="88" rx="22" fill="rgba(255,255,255,.07)" stroke="rgba(255,255,255,.18)"/>
+          <text x="355" y="460" text-anchor="middle" fill="#fff" font-size="21" font-weight="850">OpenCode</text>
+          <rect x="465" y="410" width="170" height="88" rx="22" fill="rgba(255,255,255,.07)" stroke="rgba(255,255,255,.18)"/>
+          <text x="550" y="460" text-anchor="middle" fill="#fff" font-size="21" font-weight="850">Hermes</text>
+          <rect x="660" y="410" width="170" height="88" rx="22" fill="rgba(255,255,255,.07)" stroke="rgba(255,255,255,.18)"/>
+          <text x="745" y="460" text-anchor="middle" fill="#fff" font-size="21" font-weight="850">OpenClaw</text>
+          <path d="M550 350 L550 410" stroke="url(#g1)" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </section>
+
+    <section id="compare">
+      <div class="section-head">
+        <h2>Why Task Hounds?</h2>
+        <p>Instead of asking one agent to do everything, Task Hounds separates planning, execution, and review.</p>
+      </div>
+      <table class="compare">
+        <thead>
+          <tr><th>Feature</th><th>Task Hounds</th><th>Single-Agent Dev</th><th>Traditional CI/CD</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Agent specialisation</td><td><span class="yes">Yes</span> — Manager + Worker + Reviewer</td><td><span class="no">No</span> — one agent</td><td><span class="no">No</span> — human-only</td></tr>
+          <tr><td>Autonomous planning</td><td><span class="yes">Yes</span> — AI task decomposition</td><td><span class="warn">Limited</span></td><td><span class="no">Manual</span></td></tr>
+          <tr><td>Self-review loop</td><td><span class="yes">Yes</span> — review is separate from work</td><td><span class="no">Weak</span></td><td><span class="warn">Basic linting</span></td></tr>
+          <tr><td>Continuous mode</td><td><span class="yes">Yes</span> — iterate until goal achieved</td><td><span class="no">Usually one-shot</span></td><td><span class="no">Triggered only</span></td></tr>
+          <tr><td>Backend support</td><td><span class="yes">OpenCode · Hermes · OpenClaw</span></td><td>N/A</td><td>N/A</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="quickstart">
+      <div class="section-head">
+        <h2>Quick Start</h2>
+        <p>Install the Python package, build the optional dashboard, then initialise the database.</p>
+      </div>
+      <div class="grid cols-2">
+        <div class="card steps">
+          <div class="step"><h3>Install</h3><p>Clone the project and install the backend package in editable mode.</p></div>
+          <div class="step"><h3>Build Dashboard</h3><p>Install frontend dependencies and build the React + Vite dashboard.</p></div>
+          <div class="step"><h3>Run</h3><p>Start one cycle, continuous mode, or auto-release mode.</p></div>
+        </div>
+        <div class="codebox">
+          <pre><code># Clone the repository
+git clone https://github.com/catowabisabi/power-teams.git
+cd power-teams
+
+# Python backend
+pip install -e .
+
+# Optional dashboard
+cd frontend
+npm install
+npm run build
+npm run dev
+
+# Database
+python -m power_teams db init
+
+# Run a task
+python -m powerteams run \
+  --task "Implement user authentication" \
+  --mode continuous \
+  --max-iterations 50</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="use-cases">
+      <div class="section-head">
+        <h2>Use Cases</h2>
+        <p>Designed for long-running development workflows where planning and review need to be separated.</p>
+      </div>
+      <div class="grid cols-3">
+        <article class="card"><div class="icon">🏗️</div><h3>Autonomous Features</h3><p>Let agents plan and build features while you focus on product direction.</p></article>
+        <article class="card"><div class="icon">🔧</div><h3>Legacy Modernisation</h3><p>Refactor old code while reviewer agents guard compatibility and quality.</p></article>
+        <article class="card"><div class="icon">🧪</div><h3>Testing Loops</h3><p>Generate tests, review coverage, and iterate until quality targets are met.</p></article>
+        <article class="card"><div class="icon">📦</div><h3>Auto Release</h3><p>Ship when quality gates pass and structured checks are satisfied.</p></article>
+        <article class="card"><div class="icon">🌐</div><h3>Distributed Teams</h3><p>Run multiple teams across backends for separate projects or modules.</p></article>
+        <article class="card"><div class="icon">🗄️</div><h3>Persistent Context</h3><p>Use SQLite state to keep agent memory and project progress organised.</p></article>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="section-head">
+        <h2>Roadmap</h2>
+        <p>A practical path from MVP orchestration to full autonomous operation with human-in-the-loop callbacks.</p>
+      </div>
+      <div class="roadmap">
+        <div class="milestone"><span class="version">v1.0</span><p>Basic three-agent orchestration with OpenCode backend.</p></div>
+        <div class="milestone"><span class="version">v1.1–1.2</span><p>Hermes and OpenClaw backend support.</p></div>
+        <div class="milestone"><span class="version">v2.0–2.1</span><p>Continuous mode, persistence, and quality gates.</p></div>
+        <div class="milestone"><span class="version">v2.5–3.1</span><p>Webhook notifications, multi-team coordination, distributed deployment.</p></div>
+        <div class="milestone"><span class="version">v4.0</span><p>Full autonomous operation with human-in-the-loop callbacks.</p></div>
+      </div>
+    </section>
+
+    <section id="languages">
+      <div class="section-head">
+        <h2>Multilingual README</h2>
+        <p>The original README supports English, Traditional Chinese, and Japanese sections. Keep this HTML page as the visual front door, and keep README.md as the GitHub entry point.</p>
+      </div>
+      <div class="tabs">
+        <details class="lang" open>
+          <summary>🇬🇧 English</summary>
+          <div class="lang-body">Multi-Agent Orchestration System for Autonomous Software Development. Set it running and walk away.</div>
+        </details>
+        <details class="lang">
+          <summary>🇭🇰 繁體中文</summary>
+          <div class="lang-body">Task Hounds 是一個多代理編排系統，用 Manager、Worker、Reviewer 分工處理自主軟件開發。</div>
+        </details>
+        <details class="lang">
+          <summary>🇯🇵 日本語</summary>
+          <div class="lang-body">Task Hounds は、自律的なソフトウェア開発のためのマルチエージェント・オーケストレーションシステムです。</div>
+        </details>
+      </div>
+    </section>
+
+    <section id="contribute">
+      <div class="section-head">
+        <h2>Welcome to submit PR</h2>
+        <p>Task Hounds is backend-agnostic. Backend developers are welcome to add new agent integrations.</p>
+      </div>
+      <div class="grid cols-2">
+        <article class="card">
+          <div class="icon">🔌</div>
+          <h3>Add a backend</h3>
+          <p>Implement connect, send_message, get_status, and disconnect through the backend interface. Add docs and tests, then open a pull request.</p>
+          <div class="codebox">
+            <pre><code>class AgentBackend(ABC):
+    async def connect(self) -> None: ...
+    async def send_message(self, agent: str, message: dict) -> dict: ...
+    async def get_status(self) -> BackendStatus: ...
+    async def disconnect(self) -> None: ...</code></pre>
+          </div>
+        </article>
+        <article class="card">
+          <div class="icon">🤝</div>
+          <h3>Community roles</h3>
+          <p>Moderators, documentation writers, testers, and backend maintainers are welcome. Help triage issues, improve docs, and keep the project healthy.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    <span class="big">Task Hounds — You set it running, and walk away.</span>
+    <span>Made with ❤️ by the Task Hounds community · MIT License</span>
+  </footer>
+</body>
+</html>

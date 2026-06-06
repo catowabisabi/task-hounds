@@ -1,0 +1,76 @@
+[
+  {
+    "path": "core/power_teams/agentic_workflows/flow_01/adapters.py",
+    "interfaces": [
+      {
+        "name": "FlowSignalAdapter",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "loop_started",
+          "manager_completed",
+          "worker_completed",
+          "reviewer_completed",
+          "loop_completed"
+        ]
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/agentic_workflows/flow_01/graph.py",
+    "interfaces": [
+      {
+        "name": "CompiledGraph",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "invoke"
+        ]
+      }
+    ]
+  },
+  {
+    "path": "core/power_teams/agentic_workflows/flow_01/workflow.py",
+    "interfaces": [
+      {
+        "name": "CancellationToken",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "cancelled",
+          "paused"
+        ]
+      },
+      {
+        "name": "ManagerExecutor",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "execute"
+        ]
+      },
+      {
+        "name": "WorkerExecutor",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "execute"
+        ]
+      },
+      {
+        "name": "ReviewerExecutor",
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "execute"
+        ]
+      }
+    ]
+  }
+]

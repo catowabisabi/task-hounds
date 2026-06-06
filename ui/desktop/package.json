@@ -1,0 +1,86 @@
+{
+  "name": "task-hounds",
+  "version": "1.0.0",
+  "description": "Task Hounds - AI Agent Orchestration Desktop App",
+  "author": "Chris",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "dist": "electron-builder --win --publish never",
+    "build:exe": "powershell -ExecutionPolicy Bypass -File ../../build_exe.ps1"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.task-hounds.app",
+    "productName": "Task Hounds",
+    "copyright": "Copyright (c) 2026 Task Hounds",
+    "icon": "../../docs/image/Task-Hounds-Logo-Small.ico",
+    "forceCodeSigning": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "splash.html",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../core/task_hounds_api",
+        "to": "core/task_hounds_api",
+        "filter": [
+          "**/*.py",
+          "**/*.md"
+        ]
+      },
+      {
+        "from": "../../core/db",
+        "to": "core/db",
+        "filter": [
+          "schema.sql",
+          "migrations/**/*.sql"
+        ]
+      },
+      {
+        "from": "../../.env.example",
+        "to": ".env.example"
+      },
+      {
+        "from": "../../ui/web/dist",
+        "to": "ui/web/dist"
+      },
+      {
+        "from": "../../docs/image/Task-Hounds-Logo-Small.png",
+        "to": "docs/image/Task-Hounds-Logo-Small.png"
+      },
+      {
+        "from": "../../docs/image/banner2.png",
+        "to": "docs/image/banner2.png"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Task Hounds",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

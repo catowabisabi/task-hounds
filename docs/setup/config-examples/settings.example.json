@@ -1,0 +1,14 @@
+{
+  "language": "en",
+  "force_planning": true,
+  "force_todo": true,
+  "force_thinking_language": true,
+  "custom_languages": [],
+  "active_workspace_id": "default",
+  "active_project_session": null,
+  "agent_sessions": {
+    "manager": null,
+    "worker": null,
+    "reviewer": null
+  }
+}

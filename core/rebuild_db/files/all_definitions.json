@@ -1,0 +1,5220 @@
+[
+  {
+    "path": "core\\api\\fastapi_server.py",
+    "lines": 4139,
+    "functions": [
+      {
+        "name": "_load_env_files",
+        "line": 38,
+        "args": []
+      },
+      {
+        "name": "ensure_backend_ready",
+        "line": 138,
+        "args": []
+      },
+      {
+        "name": "ensure_runtime_ready",
+        "line": 153,
+        "args": []
+      },
+      {
+        "name": "write_active_runtime_file",
+        "line": 177,
+        "args": [
+          "name",
+          "value"
+        ]
+      },
+      {
+        "name": "startup",
+        "line": 206,
+        "args": []
+      },
+      {
+        "name": "shutdown",
+        "line": 212,
+        "args": []
+      },
+      {
+        "name": "get_api_secret_key",
+        "line": 224,
+        "args": []
+      },
+      {
+        "name": "check_auth",
+        "line": 228,
+        "args": [
+          "x_api_key"
+        ]
+      },
+      {
+        "name": "_append_text",
+        "line": 565,
+        "args": [
+          "path",
+          "value"
+        ]
+      },
+      {
+        "name": "_read_json_body",
+        "line": 569,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "ping",
+        "line": 585,
+        "args": []
+      },
+      {
+        "name": "health",
+        "line": 590,
+        "args": []
+      },
+      {
+        "name": "health_post",
+        "line": 656,
+        "args": []
+      },
+      {
+        "name": "get_agents",
+        "line": 661,
+        "args": []
+      },
+      {
+        "name": "update_agent",
+        "line": 667,
+        "args": [
+          "name",
+          "body"
+        ]
+      },
+      {
+        "name": "validate_send_config",
+        "line": 733,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "agent_kill",
+        "line": 748,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "agent_health",
+        "line": 789,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "agent_clear_error",
+        "line": 804,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "agent_retry",
+        "line": 818,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "agent_mark_resolved",
+        "line": 828,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "get_loop_status",
+        "line": 846,
+        "args": []
+      },
+      {
+        "name": "loop_start",
+        "line": 851,
+        "args": []
+      },
+      {
+        "name": "loop_stop",
+        "line": 866,
+        "args": []
+      },
+      {
+        "name": "run_cycle",
+        "line": 876,
+        "args": []
+      },
+      {
+        "name": "run_cycle_stop",
+        "line": 887,
+        "args": []
+      },
+      {
+        "name": "session_reset",
+        "line": 897,
+        "args": []
+      },
+      {
+        "name": "get_sessions",
+        "line": 931,
+        "args": []
+      },
+      {
+        "name": "get_archived_sessions",
+        "line": 938,
+        "args": []
+      },
+      {
+        "name": "session_archive_toggle",
+        "line": 944,
+        "args": [
+          "session_key"
+        ]
+      },
+      {
+        "name": "session_archive_delete",
+        "line": 964,
+        "args": [
+          "session_key"
+        ]
+      },
+      {
+        "name": "project_session_switch",
+        "line": 979,
+        "args": [
+          "session_id"
+        ]
+      },
+      {
+        "name": "project_session_patch",
+        "line": 1003,
+        "async": true,
+        "args": [
+          "session_id",
+          "request"
+        ]
+      },
+      {
+        "name": "project_session_delete",
+        "line": 1016,
+        "args": [
+          "session_id"
+        ]
+      },
+      {
+        "name": "get_suggestion",
+        "line": 1032,
+        "args": []
+      },
+      {
+        "name": "get_unscoped_suggestions",
+        "line": 1037,
+        "args": []
+      },
+      {
+        "name": "update_suggestion",
+        "line": 1067,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "_run_suggestion_status_action",
+        "line": 1085,
+        "async": true,
+        "args": [
+          "request",
+          "target_status"
+        ]
+      },
+      {
+        "name": "suggestion_pause",
+        "line": 1120,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "suggestion_release",
+        "line": 1125,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "suggestion_done",
+        "line": 1130,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "suggestion_new",
+        "line": 1135,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "get_manager_messages",
+        "line": 1166,
+        "args": []
+      },
+      {
+        "name": "create_manager_message",
+        "line": 1171,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "chat_status",
+        "line": 1191,
+        "args": []
+      },
+      {
+        "name": "chat_messages",
+        "line": 1200,
+        "args": [
+          "limit"
+        ]
+      },
+      {
+        "name": "chat_send",
+        "line": 1205,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "get_settings",
+        "line": 1293,
+        "args": []
+      },
+      {
+        "name": "save_settings",
+        "line": 1298,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "put_settings",
+        "line": 1312,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "get_user_input",
+        "line": 1321,
+        "args": []
+      },
+      {
+        "name": "put_user_input",
+        "line": 1327,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "user_input_has_content",
+        "line": 1333,
+        "args": []
+      },
+      {
+        "name": "directive_status",
+        "line": 1338,
+        "args": []
+      },
+      {
+        "name": "get_tasks",
+        "line": 1344,
+        "args": []
+      },
+      {
+        "name": "get_worker_report",
+        "line": 1349,
+        "args": []
+      },
+      {
+        "name": "get_manager_feedback",
+        "line": 1354,
+        "args": []
+      },
+      {
+        "name": "get_manager_msg_user",
+        "line": 1359,
+        "args": []
+      },
+      {
+        "name": "get_work_status",
+        "line": 1364,
+        "args": []
+      },
+      {
+        "name": "get_session_state",
+        "line": 1369,
+        "args": []
+      },
+      {
+        "name": "get_stream",
+        "line": 1378,
+        "args": [
+          "agent_name"
+        ]
+      },
+      {
+        "name": "put_stream",
+        "line": 1384,
+        "async": true,
+        "args": [
+          "agent_name",
+          "request"
+        ]
+      },
+      {
+        "name": "clear_stream",
+        "line": 1399,
+        "args": [
+          "agent_name"
+        ]
+      },
+      {
+        "name": "get_timer",
+        "line": 1410,
+        "args": [
+          "agent_name"
+        ]
+      },
+      {
+        "name": "get_debug",
+        "line": 1416,
+        "args": [
+          "agent_name"
+        ]
+      },
+      {
+        "name": "get_handoff",
+        "line": 1425,
+        "args": []
+      },
+      {
+        "name": "get_handoff_versions",
+        "line": 1430,
+        "args": []
+      },
+      {
+        "name": "update_handoff",
+        "line": 1435,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "_workspace_list_data",
+        "line": 1459,
+        "args": []
+      },
+      {
+        "name": "_workspace_sessions_data",
+        "line": 1488,
+        "args": [
+          "ws_id"
+        ]
+      },
+      {
+        "name": "get_workspaces",
+        "line": 1502,
+        "args": []
+      },
+      {
+        "name": "create_workspace",
+        "line": 1507,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "get_workspace",
+        "line": 1544,
+        "args": [
+          "ws_id"
+        ]
+      },
+      {
+        "name": "update_workspace",
+        "line": 1554,
+        "args": [
+          "ws_id",
+          "body"
+        ]
+      },
+      {
+        "name": "delete_workspace",
+        "line": 1565,
+        "args": [
+          "ws_id"
+        ]
+      },
+      {
+        "name": "activate_workspace",
+        "line": 1579,
+        "args": [
+          "ws_id"
+        ]
+      },
+      {
+        "name": "relink_workspace",
+        "line": 1599,
+        "async": true,
+        "args": [
+          "ws_id",
+          "request"
+        ]
+      },
+      {
+        "name": "workspace_new_session",
+        "line": 1640,
+        "args": [
+          "ws_id"
+        ]
+      },
+      {
+        "name": "workspace_sessions",
+        "line": 1666,
+        "args": [
+          "ws_id"
+        ]
+      },
+      {
+        "name": "get_plan",
+        "line": 1675,
+        "args": []
+      },
+      {
+        "name": "update_plan",
+        "line": 1690,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "get_todos",
+        "line": 1712,
+        "args": []
+      },
+      {
+        "name": "create_todo",
+        "line": 1729,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "update_todo",
+        "line": 1757,
+        "args": [
+          "todo_id",
+          "body"
+        ]
+      },
+      {
+        "name": "delete_todo",
+        "line": 1787,
+        "args": [
+          "todo_id"
+        ]
+      },
+      {
+        "name": "runtime_status",
+        "line": 1807,
+        "args": []
+      },
+      {
+        "name": "runtime_active_work",
+        "line": 1817,
+        "args": []
+      },
+      {
+        "name": "runtime_stop_all",
+        "line": 1826,
+        "args": []
+      },
+      {
+        "name": "runtime_checkpoint",
+        "line": 1841,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "runtime_checkpoints",
+        "line": 1858,
+        "args": []
+      },
+      {
+        "name": "runtime_checkpoint_resume",
+        "line": 1867,
+        "args": [
+          "cp_id"
+        ]
+      },
+      {
+        "name": "runtime_checkpoint_archive",
+        "line": 1884,
+        "args": [
+          "cp_id"
+        ]
+      },
+      {
+        "name": "runtime_binding",
+        "line": 1893,
+        "args": [
+          "role"
+        ]
+      },
+      {
+        "name": "runtime_binding_update",
+        "line": 1907,
+        "async": true,
+        "args": [
+          "role",
+          "request"
+        ]
+      },
+      {
+        "name": "runtime_policy_get",
+        "line": 1942,
+        "args": []
+      },
+      {
+        "name": "runtime_policy",
+        "line": 1952,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "runtime_opencode_list",
+        "line": 1977,
+        "args": []
+      },
+      {
+        "name": "runtime_opencode_discover",
+        "line": 1989,
+        "args": []
+      },
+      {
+        "name": "runtime_opencode_start",
+        "line": 2000,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "runtime_opencode_attach",
+        "line": 2020,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "runtime_opencode_test",
+        "line": 2036,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "runtime_opencode_ignore",
+        "line": 2048,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "runtime_opencode_stop",
+        "line": 2059,
+        "args": [
+          "instance_id"
+        ]
+      },
+      {
+        "name": "runtime_opencode_restart",
+        "line": 2070,
+        "args": [
+          "instance_id"
+        ]
+      },
+      {
+        "name": "runtime_opencode_refresh",
+        "line": 2081,
+        "args": [
+          "instance_id"
+        ]
+      },
+      {
+        "name": "get_backends",
+        "line": 2096,
+        "args": []
+      },
+      {
+        "name": "opencode_models",
+        "line": 2105,
+        "args": []
+      },
+      {
+        "name": "opencode_available_models",
+        "line": 2142,
+        "args": []
+      },
+      {
+        "name": "opencode_config_info",
+        "line": 2148,
+        "args": []
+      },
+      {
+        "name": "opencode_agents",
+        "line": 2174,
+        "args": []
+      },
+      {
+        "name": "opencode_options",
+        "line": 2209,
+        "args": [
+          "host",
+          "port"
+        ]
+      },
+      {
+        "name": "opencode_send_stream",
+        "line": 2236,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "port_checks",
+        "line": 2314,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "_flow_01_default_workspace",
+        "line": 2346,
+        "args": []
+      },
+      {
+        "name": "_flow_01_workspace_path",
+        "line": 2350,
+        "args": [
+          "raw_path"
+        ]
+      },
+      {
+        "name": "_flow_01_directive_file",
+        "line": 2356,
+        "args": [
+          "workspace_path",
+          "directive_file"
+        ]
+      },
+      {
+        "name": "_flow_01_default_directive",
+        "line": 2362,
+        "args": []
+      },
+      {
+        "name": "_flow_01_read_directive",
+        "line": 2370,
+        "args": [
+          "workspace_path",
+          "directive_file"
+        ]
+      },
+      {
+        "name": "_flow_01_write_directive",
+        "line": 2377,
+        "args": [
+          "directive",
+          "workspace_path",
+          "directive_file"
+        ]
+      },
+      {
+        "name": "_flow_01_insert_db_directive",
+        "line": 2394,
+        "args": [
+          "directive",
+          "workspace_path"
+        ]
+      },
+      {
+        "name": "_flow_01_counts",
+        "line": 2427,
+        "args": []
+      },
+      {
+        "name": "_flow_01_run_summary",
+        "line": 2434,
+        "args": [
+          "row"
+        ]
+      },
+      {
+        "name": "_flow_01_create_start_loop_run",
+        "line": 2458,
+        "args": [
+          "flow_input"
+        ]
+      },
+      {
+        "name": "_flow_01_use_real_executors",
+        "line": 2563,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "_flow_01_mark_run",
+        "line": 2569,
+        "args": [
+          "run_id"
+        ]
+      },
+      {
+        "name": "_flow_01_run_row",
+        "line": 2584,
+        "args": [
+          "run_id"
+        ]
+      },
+      {
+        "name": "_flow_01_run_is_cancelling",
+        "line": 2597,
+        "args": [
+          "run_id"
+        ]
+      },
+      {
+        "name": "_flow_01_merge_run_output",
+        "line": 2602,
+        "args": [
+          "run_id"
+        ]
+      },
+      {
+        "name": "_flow_01_write_manager_state",
+        "line": 2627,
+        "args": [
+          "run_id",
+          "flow_input",
+          "state"
+        ]
+      },
+      {
+        "name": "_flow_01_write_planning_state",
+        "line": 2723,
+        "args": [
+          "flow_input",
+          "state"
+        ]
+      },
+      {
+        "name": "_flow_01_finish_run_from_output",
+        "line": 2779,
+        "args": [
+          "run_id",
+          "storage",
+          "flow_input",
+          "output"
+        ]
+      },
+      {
+        "name": "_flow_01_run_is_pausing",
+        "line": 2817,
+        "args": [
+          "run_id"
+        ]
+      },
+      {
+        "name": "_flow_01_background_run",
+        "line": 2822,
+        "args": [
+          "run_id",
+          "flow_input",
+          "body"
+        ]
+      },
+      {
+        "name": "_flow_01_input_from_current_ui",
+        "line": 3022,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "_flow_01_reload_todo_items",
+        "line": 3074,
+        "args": [
+          "flow_input"
+        ]
+      },
+      {
+        "name": "flow_01_status",
+        "line": 3109,
+        "args": []
+      },
+      {
+        "name": "prepare_flow_01",
+        "line": 3131,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "get_flow_01_directive",
+        "line": 3156,
+        "args": [
+          "workspace_path",
+          "directive_file"
+        ]
+      },
+      {
+        "name": "put_flow_01_directive",
+        "line": 3171,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "list_flow_01_runs",
+        "line": 3180,
+        "args": [
+          "limit"
+        ]
+      },
+      {
+        "name": "get_flow_01_run",
+        "line": 3207,
+        "args": [
+          "run_id"
+        ]
+      },
+      {
+        "name": "cancel_flow_01_run",
+        "line": 3230,
+        "args": [
+          "run_id",
+          "body"
+        ]
+      },
+      {
+        "name": "pause_flow_01_run",
+        "line": 3293,
+        "args": [
+          "run_id"
+        ]
+      },
+      {
+        "name": "resume_flow_01_run",
+        "line": 3334,
+        "args": [
+          "run_id"
+        ]
+      },
+      {
+        "name": "get_flow_01_plan",
+        "line": 3408,
+        "args": []
+      },
+      {
+        "name": "put_flow_01_plan",
+        "line": 3430,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "get_flow_01_todos",
+        "line": 3463,
+        "args": []
+      },
+      {
+        "name": "post_flow_01_todo",
+        "line": 3486,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "patch_flow_01_todo",
+        "line": 3529,
+        "async": true,
+        "args": [
+          "todo_id",
+          "request"
+        ]
+      },
+      {
+        "name": "delete_flow_01_todo",
+        "line": 3550,
+        "args": [
+          "todo_id"
+        ]
+      },
+      {
+        "name": "get_flow_01_suggestion",
+        "line": 3565,
+        "args": []
+      },
+      {
+        "name": "get_flow_01_unscoped_suggestions",
+        "line": 3591,
+        "args": []
+      },
+      {
+        "name": "create_flow_01_suggestion",
+        "line": 3596,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "update_flow_01_suggestion",
+        "line": 3625,
+        "async": true,
+        "args": [
+          "action",
+          "request"
+        ]
+      },
+      {
+        "name": "get_flow_01_handoff",
+        "line": 3667,
+        "args": []
+      },
+      {
+        "name": "update_flow_01_handoff",
+        "line": 3698,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "get_flow_01_manager_messages",
+        "line": 3740,
+        "args": [
+          "limit"
+        ]
+      },
+      {
+        "name": "get_flow_01_reports",
+        "line": 3774,
+        "args": [
+          "session_id"
+        ]
+      },
+      {
+        "name": "get_flow_01_fake_db_path",
+        "line": 3881,
+        "args": []
+      },
+      {
+        "name": "run_flow_01",
+        "line": 3892,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "start_flow_01_loop",
+        "line": 3972,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "clear_all",
+        "line": 4014,
+        "args": []
+      },
+      {
+        "name": "pick_folder",
+        "line": 4047,
+        "async": true,
+        "args": [
+          "request"
+        ]
+      },
+      {
+        "name": "debug_logs",
+        "line": 4074,
+        "args": [
+          "body"
+        ]
+      },
+      {
+        "name": "_heartbeat_loop",
+        "line": 4095,
+        "args": [
+          "interval"
+        ]
+      }
+    ],
+    "classes": [
+      {
+        "name": "OkResponse",
+        "line": 238,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "HealthResponse",
+        "line": 242,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "Agent",
+        "line": 249,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "AgentUpdate",
+        "line": 271,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "LoopStatus",
+        "line": 286,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "Suggestion",
+        "line": 292,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "SuggestionUpdate",
+        "line": 305,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "ManagerMessage",
+        "line": 314,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "ManagerMessageCreate",
+        "line": 323,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "ChatMessage",
+        "line": 330,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "ChatSendRequest",
+        "line": 338,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "ChatStatusResponse",
+        "line": 344,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "ChatSendResponse",
+        "line": 350,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "Settings",
+        "line": 358,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "UserInputContent",
+        "line": 366,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "HasContentResponse",
+        "line": 372,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "DirectiveStatusResponse",
+        "line": 376,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "FileContent",
+        "line": 382,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "StreamContent",
+        "line": 387,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "HandoffData",
+        "line": 392,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "HandoffUpdate",
+        "line": 402,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "SessionInfo",
+        "line": 411,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "SessionsResponse",
+        "line": 423,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "ArchivedSessionsResponse",
+        "line": 429,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "Workspace",
+        "line": 434,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "WorkspaceCreate",
+        "line": 444,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "WorkspaceUpdate",
+        "line": 452,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "PlanData",
+        "line": 461,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "TodoItem",
+        "line": 466,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "TodoCreate",
+        "line": 478,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "TodoUpdate",
+        "line": 488,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "RuntimeStatus",
+        "line": 500,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "ActiveWorkResponse",
+        "line": 505,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "BackendList",
+        "line": 510,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "PortCheckResult",
+        "line": 515,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "FlowRunRequest",
+        "line": 520,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "FlowDirectiveRequest",
+        "line": 535,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "FlowPrepareRequest",
+        "line": 543,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "FlowCancelRequest",
+        "line": 550,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "DebugLogEntry",
+        "line": 558,
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": []
+      },
+      {
+        "name": "_Flow01CancellationToken",
+        "line": 2805,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "cancelled",
+          "paused"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "argparse",
+      "json",
+      "os",
+      "re",
+      "socket",
+      "subprocess",
+      "sys",
+      "threading",
+      "time",
+      "uuid",
+      "dataclasses.asdict",
+      "datetime.datetime",
+      "datetime.timezone",
+      "pathlib.Path",
+      "typing.Any",
+      "uvicorn",
+      "fastapi.FastAPI",
+      "fastapi.Header",
+      "fastapi.HTTPException",
+      "fastapi.Query",
+      "fastapi.Request",
+      "fastapi.middleware.cors.CORSMiddleware",
+      "fastapi.responses.JSONResponse",
+      "fastapi.responses.StreamingResponse",
+      "fastapi.staticfiles.StaticFiles",
+      "pydantic.BaseModel",
+      "pydantic.ConfigDict",
+      "pydantic.Field",
+      "api.services.legacy.services",
+      "api.model_validation.load_available_models_from_config",
+      "api.model_validation.is_model_available",
+      "api.model_validation.model_supports_thinking",
+      "api.model_validation.get_available_models",
+      "api.model_validation._AVAILABLE_MODELS_CACHE"
+    ],
+    "constants": [
+      "ROOT",
+      "RUNTIME_DIR",
+      "RUNTIME_FILES",
+      "DB_PATH",
+      "WEB_DIST",
+      "UTC",
+      "PYTHONPATH_ENTRIES",
+      "RUN_LOG",
+      "DEFAULT_STREAM_AGENTS",
+      "_DEFAULT_STREAM_AGENTS",
+      "_RUN_LOG",
+      "FLOW_01_TABLES"
+    ]
+  },
+  {
+    "path": "core\\api\\model_validation.py",
+    "lines": 193,
+    "functions": [
+      {
+        "name": "_strip_jsonc",
+        "line": 24,
+        "args": [
+          "text"
+        ]
+      },
+      {
+        "name": "_parse_jsonc_config",
+        "line": 90,
+        "args": [
+          "config_path"
+        ]
+      },
+      {
+        "name": "load_available_models_from_config",
+        "line": 106,
+        "args": [
+          "runtime_dir"
+        ]
+      },
+      {
+        "name": "is_model_available",
+        "line": 152,
+        "args": [
+          "model_id"
+        ]
+      },
+      {
+        "name": "model_supports_thinking",
+        "line": 159,
+        "args": [
+          "model_id"
+        ]
+      },
+      {
+        "name": "get_available_models",
+        "line": 183,
+        "args": []
+      }
+    ],
+    "classes": [
+      {
+        "name": "ModelInfo",
+        "line": 15,
+        "bases": [
+          "TypedDict"
+        ],
+        "methods": []
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "re",
+      "pathlib.Path",
+      "typing.TypedDict"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\api\\server.py",
+    "lines": 23,
+    "functions": [],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "sys",
+      "pathlib.Path",
+      "api.server_legacy.*"
+    ],
+    "constants": [
+      "CORE_DIR"
+    ]
+  },
+  {
+    "path": "core\\api\\server_legacy.py",
+    "lines": 3248,
+    "functions": [
+      {
+        "name": "get_api_secret_key",
+        "line": 16,
+        "args": []
+      },
+      {
+        "name": "require_auth",
+        "line": 20,
+        "args": [
+          "func"
+        ]
+      },
+      {
+        "name": "is_protected_path",
+        "line": 67,
+        "args": [
+          "path",
+          "method"
+        ]
+      },
+      {
+        "name": "check_api_auth",
+        "line": 74,
+        "args": [
+          "handler"
+        ]
+      },
+      {
+        "name": "_load_env_files",
+        "line": 105,
+        "args": []
+      },
+      {
+        "name": "agent_stream_path",
+        "line": 156,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "active_agent_stream_path",
+        "line": 160,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "agent_timer_path",
+        "line": 171,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "read_runtime",
+        "line": 183,
+        "args": [
+          "sub_path"
+        ]
+      },
+      {
+        "name": "write_runtime",
+        "line": 189,
+        "args": [
+          "sub_path",
+          "value"
+        ]
+      },
+      {
+        "name": "active_runtime_file",
+        "line": 194,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "read_active_runtime_file",
+        "line": 204,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "write_active_runtime_file",
+        "line": 210,
+        "args": [
+          "name",
+          "value"
+        ]
+      },
+      {
+        "name": "debug_log",
+        "line": 226,
+        "args": [
+          "msg"
+        ]
+      },
+      {
+        "name": "append_text",
+        "line": 237,
+        "args": [
+          "path",
+          "value"
+        ]
+      },
+      {
+        "name": "get_db_agents",
+        "line": 241,
+        "args": []
+      },
+      {
+        "name": "_db",
+        "line": 269,
+        "args": []
+      },
+      {
+        "name": "get_handoff_data",
+        "line": 277,
+        "args": []
+      },
+      {
+        "name": "get_handoff_versions",
+        "line": 290,
+        "args": []
+      },
+      {
+        "name": "get_suggestion_data",
+        "line": 301,
+        "args": []
+      },
+      {
+        "name": "get_unscoped_suggestions_data",
+        "line": 332,
+        "args": []
+      },
+      {
+        "name": "get_manager_messages_data",
+        "line": 346,
+        "args": []
+      },
+      {
+        "name": "read_settings",
+        "line": 385,
+        "args": []
+      },
+      {
+        "name": "write_settings",
+        "line": 395,
+        "args": [
+          "data"
+        ]
+      },
+      {
+        "name": "get_active_project_session_id",
+        "line": 401,
+        "args": []
+      },
+      {
+        "name": "get_pending_human_directive",
+        "line": 405,
+        "args": []
+      },
+      {
+        "name": "get_chat_messages_data",
+        "line": 422,
+        "args": [
+          "limit"
+        ]
+      },
+      {
+        "name": "render_chat_stream_from_history",
+        "line": 442,
+        "args": [
+          "limit"
+        ]
+      },
+      {
+        "name": "get_chat_runtime_status",
+        "line": 456,
+        "args": []
+      },
+      {
+        "name": "is_opencode_http_reachable",
+        "line": 477,
+        "args": [
+          "host",
+          "port",
+          "timeout"
+        ]
+      },
+      {
+        "name": "update_agent_state",
+        "line": 529,
+        "args": [
+          "name",
+          "state",
+          "task_complete"
+        ]
+      },
+      {
+        "name": "write_timer",
+        "line": 558,
+        "args": [
+          "path",
+          "seconds"
+        ]
+      },
+      {
+        "name": "stream_process_output",
+        "line": 572,
+        "args": [
+          "process",
+          "stream_file"
+        ]
+      },
+      {
+        "name": "_agent_ports_reachable",
+        "line": 596,
+        "args": []
+      },
+      {
+        "name": "ensure_opencode_servers",
+        "line": 613,
+        "args": []
+      },
+      {
+        "name": "run_mvp_cycle",
+        "line": 642,
+        "args": []
+      },
+      {
+        "name": "stop_mvp_cycle",
+        "line": 693,
+        "args": []
+      },
+      {
+        "name": "start_mvp_loop",
+        "line": 707,
+        "args": []
+      },
+      {
+        "name": "stop_mvp_loop",
+        "line": 769,
+        "args": []
+      },
+      {
+        "name": "loop_status",
+        "line": 785,
+        "args": []
+      },
+      {
+        "name": "utc_now",
+        "line": 791,
+        "args": []
+      },
+      {
+        "name": "fetch_json",
+        "line": 794,
+        "args": [
+          "url",
+          "timeout"
+        ]
+      },
+      {
+        "name": "model_options",
+        "line": 799,
+        "args": [
+          "provider_payload"
+        ]
+      },
+      {
+        "name": "agent_key",
+        "line": 822,
+        "args": [
+          "value"
+        ]
+      },
+      {
+        "name": "resolve_opencode_agent",
+        "line": 825,
+        "args": [
+          "provider",
+          "name"
+        ]
+      },
+      {
+        "name": "repair_mojibake",
+        "line": 838,
+        "args": [
+          "value"
+        ]
+      },
+      {
+        "name": "extract_reasoning",
+        "line": 853,
+        "args": [
+          "message"
+        ]
+      },
+      {
+        "name": "split_answer_and_thinking",
+        "line": 862,
+        "args": [
+          "text",
+          "reasoning"
+        ]
+      },
+      {
+        "name": "extract_tools",
+        "line": 876,
+        "args": [
+          "message"
+        ]
+      },
+      {
+        "name": "sse_event",
+        "line": 907,
+        "args": [
+          "kind",
+          "payload"
+        ]
+      },
+      {
+        "name": "main",
+        "line": 3131,
+        "args": [
+          "port",
+          "start_opencode",
+          "manager_port",
+          "worker_port",
+          "startup_timeout",
+          "run_seconds",
+          "auto_loop"
+        ]
+      }
+    ],
+    "classes": [
+      {
+        "name": "Handler",
+        "line": 910,
+        "bases": [
+          "SimpleHTTPRequestHandler"
+        ],
+        "methods": [
+          "__init__",
+          "do_GET",
+          "do_PUT",
+          "do_PATCH",
+          "do_DELETE",
+          "_session_archive",
+          "_session_archive_toggle",
+          "do_POST",
+          "end_headers",
+          "_api_get",
+          "_api_put",
+          "_update_agent",
+          "_agent_health_check",
+          "_run_cycle",
+          "_run_cycle_stop",
+          "_loop_start",
+          "_loop_stop",
+          "_debug_logs",
+          "_session_reset",
+          "_clear_all",
+          "_stream_put",
+          "_stream_clear",
+          "_agent_kill",
+          "_opencode_options",
+          "_opencode_models",
+          "_settings_get",
+          "_settings_save",
+          "_read_json_body",
+          "_port_check",
+          "_opencode_send_stream",
+          "_handoff_put",
+          "_suggestion_put",
+          "_suggestion_action",
+          "_manager_message_post",
+          "_chat_send",
+          "_workspace_list_data",
+          "_workspace_sessions_data",
+          "_workspace_row",
+          "_workspace_create",
+          "_health",
+          "_check_workspace_ready",
+          "_pick_folder",
+          "_workspace_activate",
+          "_workspace_relink",
+          "_save_settings",
+          "_workspace_new_session",
+          "_project_session_switch",
+          "_runtime_opencode_start",
+          "_runtime_opencode_test",
+          "_runtime_opencode_ignore",
+          "_runtime_opencode_discover",
+          "_runtime_opencode_attach",
+          "_runtime_stop_all",
+          "_runtime_checkpoint",
+          "_runtime_checkpoint_action",
+          "_runtime_binding",
+          "_runtime_policy",
+          "_runtime_stop_all",
+          "_runtime_active_work",
+          "_agent_clear_error",
+          "_agent_retry",
+          "_agent_mark_resolved",
+          "_project_session_patch",
+          "_workspace_put",
+          "_project_session_delete",
+          "_workspace_delete",
+          "_save_settings",
+          "_read_json_body",
+          "_plan_get",
+          "_plan_put",
+          "_todos_get",
+          "_todos_post",
+          "_todos_patch",
+          "_todos_delete",
+          "_settings_get",
+          "_settings_put",
+          "_json",
+          "log_message"
+        ]
+      }
+    ],
+    "imports": [
+      "json",
+      "os",
+      "re",
+      "socket",
+      "subprocess",
+      "sys",
+      "time",
+      "threading",
+      "queue",
+      "datetime.datetime",
+      "datetime.timezone",
+      "urllib.request",
+      "urllib.error",
+      "functools.wraps",
+      "http.server.ThreadingHTTPServer",
+      "http.server.SimpleHTTPRequestHandler",
+      "pathlib.Path",
+      "urllib.parse.parse_qs",
+      "urllib.parse.urlparse",
+      "urllib.request"
+    ],
+    "constants": [
+      "UTC",
+      "PROTECTED_GET_PATHS",
+      "PROTECTED_MUTATION_PATHS",
+      "ROOT",
+      "APP",
+      "WEB_DIST",
+      "RUNTIME_DIR",
+      "RUNTIME_FILES",
+      "DB_PATH",
+      "PYTHONPATH_ENTRIES",
+      "RUN_LOG",
+      "MANAGER_STREAM",
+      "WORKER_STREAM",
+      "MANAGER_TIMER",
+      "WORKER_TIMER",
+      "DEFAULT_STREAM_AGENTS",
+      "_DEBUG_LOG_FILE"
+    ]
+  },
+  {
+    "path": "core\\api\\services\\__init__.py",
+    "lines": 3,
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\api\\services\\legacy.py",
+    "lines": 188,
+    "functions": [],
+    "classes": [
+      {
+        "name": "SettingsService",
+        "line": 17,
+        "bases": [],
+        "methods": [
+          "read",
+          "write",
+          "active_project_session_id"
+        ]
+      },
+      {
+        "name": "RuntimeFileService",
+        "line": 28,
+        "bases": [],
+        "methods": [
+          "read_active",
+          "read",
+          "write",
+          "active_file"
+        ]
+      },
+      {
+        "name": "StreamService",
+        "line": 42,
+        "bases": [],
+        "methods": [
+          "default_agents",
+          "active_path",
+          "legacy_path",
+          "timer_path",
+          "render_chat_from_history"
+        ]
+      },
+      {
+        "name": "ChatService",
+        "line": 60,
+        "bases": [],
+        "methods": [
+          "runtime_status",
+          "messages"
+        ]
+      },
+      {
+        "name": "HandoffService",
+        "line": 68,
+        "bases": [],
+        "methods": [
+          "current",
+          "versions"
+        ]
+      },
+      {
+        "name": "SuggestionService",
+        "line": 76,
+        "bases": [],
+        "methods": [
+          "current"
+        ]
+      },
+      {
+        "name": "ManagerMessageService",
+        "line": 81,
+        "bases": [],
+        "methods": [
+          "list"
+        ]
+      },
+      {
+        "name": "AgentRegistryService",
+        "line": 86,
+        "bases": [],
+        "methods": [
+          "list",
+          "update_state"
+        ]
+      },
+      {
+        "name": "OpenCodeService",
+        "line": 94,
+        "bases": [],
+        "methods": [
+          "enabled",
+          "model_options",
+          "fetch_json",
+          "resolve_agent",
+          "is_http_reachable",
+          "ensure_servers"
+        ]
+      },
+      {
+        "name": "TextExtractionService",
+        "line": 115,
+        "bases": [],
+        "methods": [
+          "repair_mojibake",
+          "extract_reasoning",
+          "split_answer_and_thinking",
+          "extract_tools"
+        ]
+      },
+      {
+        "name": "LoopService",
+        "line": 129,
+        "bases": [],
+        "methods": [
+          "run_log",
+          "start",
+          "stop",
+          "run_cycle",
+          "stop_cycle",
+          "status",
+          "get_pending_directive"
+        ]
+      },
+      {
+        "name": "ApiUtilityService",
+        "line": 153,
+        "bases": [],
+        "methods": [
+          "utc_now",
+          "debug_log",
+          "sse_event"
+        ]
+      },
+      {
+        "name": "DatabaseModuleService",
+        "line": 164,
+        "bases": [],
+        "methods": [
+          "module"
+        ]
+      },
+      {
+        "name": "LegacyApiServices",
+        "line": 170,
+        "bases": [],
+        "methods": []
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "dataclasses.dataclass",
+      "pathlib.Path",
+      "typing.Any",
+      "api.server_legacy"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\__init__.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\__main__.py",
+    "lines": 4,
+    "functions": [],
+    "classes": [],
+    "imports": [
+      "power_teams.cli.main"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\__init__.py",
+    "lines": 3,
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_00_temp\\__init__.py",
+    "lines": 30,
+    "functions": [],
+    "classes": [],
+    "imports": [
+      "interface.DB_PATH",
+      "interface.WORKFLOW_TEST_DIR",
+      "interface.FlowInput",
+      "interface.FlowLimits",
+      "interface.FlowLoopInput",
+      "interface.FlowOutput",
+      "interface.FlowRoleOutput",
+      "interface.FlowState",
+      "interface.FlowStorage",
+      "workflow.Flow01Workflow",
+      "workflow.build_langgraph"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_00_temp\\interface.py",
+    "lines": 658,
+    "functions": [
+      {
+        "name": "utc_now",
+        "line": 29,
+        "args": []
+      },
+      {
+        "name": "validate_flow_input",
+        "line": 640,
+        "args": [
+          "flow_input",
+          "limits"
+        ]
+      }
+    ],
+    "classes": [
+      {
+        "name": "FlowLimits",
+        "line": 34,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowIdentity",
+        "line": 45,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowInput",
+        "line": 60,
+        "bases": [],
+        "methods": [
+          "identity"
+        ]
+      },
+      {
+        "name": "FlowLoopInput",
+        "line": 93,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowState",
+        "line": 105,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "UITodoItem",
+        "line": 122,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "UISuggestion",
+        "line": 137,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "UIManagerMessage",
+        "line": 151,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "UIPlanData",
+        "line": 163,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowRoleOutput",
+        "line": 173,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowOutput",
+        "line": 184,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowValidationError",
+        "line": 202,
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "name": "FlowStorage",
+        "line": 206,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "connect",
+          "init_db",
+          "reset_db",
+          "write_output",
+          "count"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "sqlite3",
+      "contextlib.closing",
+      "dataclasses.asdict",
+      "dataclasses.dataclass",
+      "dataclasses.field",
+      "datetime.datetime",
+      "datetime.timezone",
+      "pathlib.Path",
+      "typing.Literal"
+    ],
+    "constants": [
+      "FLOW_DIR",
+      "DB_PATH",
+      "WORKFLOW_TEST_DIR"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_00_temp\\workflow-test\\test_flow_01.py",
+    "lines": 234,
+    "functions": [
+      {
+        "name": "_flow_input",
+        "line": 24,
+        "args": []
+      },
+      {
+        "name": "_scenario_input",
+        "line": 107,
+        "args": [
+          "index",
+          "scenario"
+        ]
+      },
+      {
+        "name": "_workflow",
+        "line": 126,
+        "args": [
+          "test_dir_name"
+        ]
+      },
+      {
+        "name": "test_dir_01_runs_five_loops_and_writes_fake_db",
+        "line": 134,
+        "args": []
+      },
+      {
+        "name": "test_dir_02_preserves_contract_shapes_for_five_loops",
+        "line": 153,
+        "args": []
+      },
+      {
+        "name": "test_dir_03_validates_limits_before_looping",
+        "line": 171,
+        "args": []
+      },
+      {
+        "name": "test_dir_04_rejects_more_than_five_loops",
+        "line": 183,
+        "args": []
+      },
+      {
+        "name": "test_dir_05_langgraph_builder_is_optional",
+        "line": 192,
+        "args": []
+      },
+      {
+        "name": "test_dir_06_runs_ten_app_tasks_five_loops_each",
+        "line": 204,
+        "args": []
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "sys",
+      "pathlib.Path",
+      "pytest",
+      "power_teams.agentic_workflows.flow_01.DB_PATH",
+      "power_teams.agentic_workflows.flow_01.WORKFLOW_TEST_DIR",
+      "power_teams.agentic_workflows.flow_01.Flow01Workflow",
+      "power_teams.agentic_workflows.flow_01.FlowInput",
+      "power_teams.agentic_workflows.flow_01.FlowLimits",
+      "power_teams.agentic_workflows.flow_01.FlowStorage",
+      "power_teams.agentic_workflows.flow_01.build_langgraph",
+      "power_teams.agentic_workflows.flow_01.interface.FlowValidationError"
+    ],
+    "constants": [
+      "CORE_DIR",
+      "TASK_SCENARIOS"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_00_temp\\workflow.py",
+    "lines": 296,
+    "functions": [
+      {
+        "name": "_state_from_raw",
+        "line": 31,
+        "args": [
+          "raw_state"
+        ]
+      },
+      {
+        "name": "build_langgraph",
+        "line": 266,
+        "args": []
+      }
+    ],
+    "classes": [
+      {
+        "name": "Flow01Workflow",
+        "line": 49,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "run_once",
+          "run_loops",
+          "manager_step",
+          "worker_step",
+          "reviewer_step",
+          "to_output"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "dataclasses.asdict",
+      "pathlib.Path",
+      "typing.Any",
+      "interface.DB_PATH",
+      "interface.FlowInput",
+      "interface.FlowLimits",
+      "interface.FlowLoopInput",
+      "interface.FlowOutput",
+      "interface.FlowRoleOutput",
+      "interface.FlowState",
+      "interface.FlowStorage",
+      "interface.UIManagerMessage",
+      "interface.UIPlanData",
+      "interface.UISuggestion",
+      "interface.UITodoItem",
+      "interface.validate_flow_input"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\__init__.py",
+    "lines": 51,
+    "functions": [],
+    "classes": [],
+    "imports": [
+      "interface.DB_PATH",
+      "interface.WORKFLOW_TEST_DIR",
+      "interface.FlowInput",
+      "interface.FlowLimits",
+      "interface.FlowLoopInput",
+      "interface.FlowOutput",
+      "interface.FlowRoleOutput",
+      "interface.FlowState",
+      "interface.FlowStorage",
+      "workflow.Flow01Workflow",
+      "workflow.LocalFileWorkerExecutor",
+      "workflow.LocalManagerExecutor",
+      "workflow.LocalReviewerExecutor",
+      "workflow.OpenCodeManagerExecutor",
+      "workflow.OpenCodeReviewerExecutor",
+      "workflow.OpenCodeWorkerExecutor",
+      "workflow.build_langgraph",
+      "graph.Flow01GraphExecutor",
+      "graph.Flow01GraphState",
+      "adapters.FastApiServiceSignalAdapter",
+      "adapters.NoopSignalAdapter",
+      "adapters.RecordingSignalAdapter"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\adapters.py",
+    "lines": 166,
+    "functions": [],
+    "classes": [
+      {
+        "name": "FlowSignalAdapter",
+        "line": 15,
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "loop_started",
+          "manager_completed",
+          "worker_completed",
+          "reviewer_completed",
+          "loop_completed"
+        ]
+      },
+      {
+        "name": "NoopSignalAdapter",
+        "line": 23,
+        "bases": [],
+        "methods": [
+          "loop_started",
+          "manager_completed",
+          "worker_completed",
+          "reviewer_completed",
+          "loop_completed"
+        ]
+      },
+      {
+        "name": "RecordingSignalAdapter",
+        "line": 43,
+        "bases": [],
+        "methods": [
+          "loop_started",
+          "manager_completed",
+          "worker_completed",
+          "reviewer_completed",
+          "loop_completed"
+        ]
+      },
+      {
+        "name": "FastApiServiceSignalAdapter",
+        "line": 64,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "loop_started",
+          "manager_completed",
+          "worker_completed",
+          "reviewer_completed",
+          "loop_completed",
+          "_update_agent",
+          "_append_stream",
+          "_append_run_log"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "dataclasses.dataclass",
+      "dataclasses.field",
+      "typing.Protocol",
+      "interface.FlowInput",
+      "interface.FlowOutput",
+      "interface.utc_now"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\constants.py",
+    "lines": 24,
+    "functions": [
+      {
+        "name": "_env",
+        "line": 7,
+        "args": [
+          "name",
+          "default"
+        ]
+      },
+      {
+        "name": "_env_path",
+        "line": 11,
+        "args": [
+          "name",
+          "default"
+        ]
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "os",
+      "pathlib.Path"
+    ],
+    "constants": [
+      "FLOW01_BASE_URL",
+      "FLOW01_BIGSMALL_WORKSPACE",
+      "FLOW01_API_TEST_DIR",
+      "DEFAULT_FLOW01_BASE_URL",
+      "DEFAULT_BIGSMALL_WORKSPACE",
+      "DEFAULT_API_TEST_DIR"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\graph.py",
+    "lines": 713,
+    "functions": [
+      {
+        "name": "_graph_state_from_flow_state",
+        "line": 74,
+        "args": [
+          "state"
+        ]
+      },
+      {
+        "name": "_flow_state_from_graph_state",
+        "line": 84,
+        "args": [
+          "raw_state"
+        ]
+      },
+      {
+        "name": "_is_real_manager",
+        "line": 95,
+        "args": [
+          "manager_executor"
+        ]
+      }
+    ],
+    "classes": [
+      {
+        "name": "_PauseRequestedError",
+        "line": 36,
+        "bases": [
+          "RuntimeError"
+        ],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "name": "CompiledGraph",
+        "line": 48,
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "invoke"
+        ]
+      },
+      {
+        "name": "Flow01GraphState",
+        "line": 54,
+        "bases": [
+          "TypedDict"
+        ],
+        "methods": []
+      },
+      {
+        "name": "StepwiseManager",
+        "line": 99,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "digest",
+          "plan",
+          "todo",
+          "select_task",
+          "release",
+          "_use_real_manager",
+          "_send_json",
+          "_prompt",
+          "_repair_prompt",
+          "_todo_dicts",
+          "_todo_dicts_from_payload",
+          "_todo_status",
+          "_todo_priority"
+        ]
+      },
+      {
+        "name": "Flow01GraphExecutor",
+        "line": 469,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "run_once",
+          "_build_graph",
+          "_route_after_plan",
+          "_route_after_todo",
+          "_route_after_select_task",
+          "_node_manager_digest",
+          "_node_manager_plan",
+          "_node_manager_todo",
+          "_node_manager_select_task",
+          "_node_manager_release",
+          "_node_worker_execute",
+          "_node_reviewer_check",
+          "_manager_node",
+          "_role_node",
+          "_after_step",
+          "_check_before_step",
+          "_emit_progress"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "dataclasses.asdict",
+      "pathlib.Path",
+      "typing.Any",
+      "typing.Callable",
+      "typing.Protocol",
+      "typing.TypedDict",
+      "interface.FlowInput",
+      "interface.FlowLoopInput",
+      "interface.FlowOutput",
+      "interface.FlowState",
+      "interface.FlowStorage",
+      "interface.validate_flow_input",
+      "workflow.CancellationToken",
+      "workflow.Flow01Workflow",
+      "workflow.LocalFileWorkerExecutor",
+      "workflow.LocalManagerExecutor",
+      "workflow.LocalReviewerExecutor",
+      "workflow.ManagerExecutor",
+      "workflow.OpenCodeManagerExecutor",
+      "workflow.ReviewerExecutor",
+      "workflow.WorkerExecutor",
+      "workflow._concise_manager_message",
+      "workflow._extract_json_object",
+      "workflow._manager_todo_items",
+      "workflow._state_from_raw",
+      "workflow._stringify_manager_field"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\interface.py",
+    "lines": 787,
+    "functions": [
+      {
+        "name": "utc_now",
+        "line": 29,
+        "args": []
+      },
+      {
+        "name": "validate_flow_input",
+        "line": 769,
+        "args": [
+          "flow_input",
+          "limits"
+        ]
+      }
+    ],
+    "classes": [
+      {
+        "name": "FlowLimits",
+        "line": 34,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowIdentity",
+        "line": 45,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowInput",
+        "line": 60,
+        "bases": [],
+        "methods": [
+          "identity"
+        ]
+      },
+      {
+        "name": "FlowLoopInput",
+        "line": 93,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowState",
+        "line": 105,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "UITodoItem",
+        "line": 124,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "UISuggestion",
+        "line": 139,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "UIManagerMessage",
+        "line": 153,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "UIPlanData",
+        "line": 165,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowRoleOutput",
+        "line": 175,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowOutput",
+        "line": 186,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "FlowValidationError",
+        "line": 204,
+        "bases": [
+          "ValueError"
+        ],
+        "methods": []
+      },
+      {
+        "name": "FlowStorage",
+        "line": 208,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "connect",
+          "init_db",
+          "reset_db",
+          "write_output",
+          "count",
+          "read_existing_state",
+          "save_checkpoint",
+          "load_checkpoint",
+          "load_checkpoint_from_session"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "sqlite3",
+      "contextlib.closing",
+      "dataclasses.asdict",
+      "dataclasses.dataclass",
+      "dataclasses.field",
+      "datetime.datetime",
+      "datetime.timezone",
+      "pathlib.Path",
+      "typing.Any",
+      "typing.Literal"
+    ],
+    "constants": [
+      "FLOW_DIR",
+      "DB_PATH",
+      "WORKFLOW_TEST_DIR"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\put_bigsmall_directive.py",
+    "lines": 118,
+    "functions": [
+      {
+        "name": "post_json",
+        "line": 101,
+        "args": [
+          "path",
+          "payload"
+        ]
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "urllib.request.Request",
+      "urllib.request.urlopen",
+      "constants.DEFAULT_BIGSMALL_WORKSPACE",
+      "constants.DEFAULT_FLOW01_BASE_URL"
+    ],
+    "constants": [
+      "BASE_URL",
+      "WORKSPACE",
+      "DIRECTIVE"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\start_bigsmall_loop.py",
+    "lines": 74,
+    "functions": [
+      {
+        "name": "request",
+        "line": 19,
+        "args": [
+          "method",
+          "path",
+          "payload",
+          "timeout"
+        ]
+      },
+      {
+        "name": "main",
+        "line": 31,
+        "args": []
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "sys",
+      "time",
+      "urllib.request.Request",
+      "urllib.request.urlopen",
+      "constants.DEFAULT_FLOW01_BASE_URL",
+      "put_bigsmall_directive.DIRECTIVE",
+      "put_bigsmall_directive.WORKSPACE"
+    ],
+    "constants": [
+      "BASE_URL",
+      "TASK"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\start_flow_01_api_test.py",
+    "lines": 91,
+    "functions": [
+      {
+        "name": "ensure_directive_file",
+        "line": 19,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "post_json",
+        "line": 26,
+        "args": [
+          "url",
+          "payload"
+        ]
+      },
+      {
+        "name": "main",
+        "line": 37,
+        "args": []
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "argparse",
+      "json",
+      "sys",
+      "pathlib.Path",
+      "urllib.error.HTTPError",
+      "urllib.error.URLError",
+      "urllib.request.Request",
+      "urllib.request.urlopen",
+      "constants.DEFAULT_API_TEST_DIR",
+      "constants.DEFAULT_FLOW01_BASE_URL"
+    ],
+    "constants": [
+      "DEFAULT_DIRECTIVE"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\workflow-test\\test_flow_01.py",
+    "lines": 491,
+    "functions": [
+      {
+        "name": "flow_db",
+        "line": 34,
+        "args": [
+          "tmp_path"
+        ]
+      },
+      {
+        "name": "_workflow",
+        "line": 39,
+        "args": [
+          "test_dir_name",
+          "flow_db"
+        ]
+      },
+      {
+        "name": "_flow_input",
+        "line": 48,
+        "args": []
+      },
+      {
+        "name": "_scenario_input",
+        "line": 131,
+        "args": [
+          "index",
+          "scenario"
+        ]
+      },
+      {
+        "name": "test_dir_01_runs_five_loops_and_writes_fake_db",
+        "line": 150,
+        "args": [
+          "flow_db"
+        ]
+      },
+      {
+        "name": "test_dir_02_preserves_contract_shapes_for_five_loops",
+        "line": 169,
+        "args": [
+          "flow_db"
+        ]
+      },
+      {
+        "name": "test_dir_03_validates_limits_before_looping",
+        "line": 187,
+        "args": [
+          "flow_db"
+        ]
+      },
+      {
+        "name": "test_dir_04_rejects_more_than_five_loops",
+        "line": 199,
+        "args": [
+          "flow_db"
+        ]
+      },
+      {
+        "name": "test_dir_05_langgraph_builder_is_optional",
+        "line": 208,
+        "args": [
+          "flow_db"
+        ]
+      },
+      {
+        "name": "test_dir_06_runs_ten_app_tasks_five_loops_each",
+        "line": 220,
+        "args": [
+          "flow_db"
+        ]
+      },
+      {
+        "name": "test_graph_executor_runs_manager_substeps_before_worker",
+        "line": 256,
+        "args": [
+          "tmp_path",
+          "flow_db"
+        ]
+      },
+      {
+        "name": "test_graph_executor_requires_langgraph_when_missing",
+        "line": 290,
+        "args": [
+          "monkeypatch",
+          "tmp_path",
+          "flow_db"
+        ]
+      },
+      {
+        "name": "test_fastapi_signal_adapter_writes_streams_and_agent_state",
+        "line": 305,
+        "args": [
+          "tmp_path",
+          "flow_db"
+        ]
+      },
+      {
+        "name": "test_opencode_reviewer_bad_json_fails_instead_of_silent_pass",
+        "line": 355,
+        "args": [
+          "monkeypatch",
+          "tmp_path"
+        ]
+      },
+      {
+        "name": "test_worker_known_issue_parser_ignores_negative_statements",
+        "line": 372,
+        "args": []
+      },
+      {
+        "name": "test_local_reviewer_placeholder_returns_needs_review",
+        "line": 389,
+        "args": [
+          "tmp_path"
+        ]
+      },
+      {
+        "name": "test_local_reviewer_default_returns_pass",
+        "line": 397,
+        "args": [
+          "tmp_path"
+        ]
+      },
+      {
+        "name": "test_extract_json_object_picks_highest_score_candidate",
+        "line": 404,
+        "args": []
+      },
+      {
+        "name": "test_opencode_manager_normalizes_structured_todos_and_dumped_message",
+        "line": 429,
+        "args": [
+          "monkeypatch",
+          "tmp_path"
+        ]
+      },
+      {
+        "name": "test_extract_known_issues_uses_word_boundary",
+        "line": 472,
+        "args": []
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "sys",
+      "pathlib.Path",
+      "pytest",
+      "power_teams.agentic_workflows.flow_01.DB_PATH",
+      "power_teams.agentic_workflows.flow_01.WORKFLOW_TEST_DIR",
+      "power_teams.agentic_workflows.flow_01.Flow01GraphExecutor",
+      "power_teams.agentic_workflows.flow_01.Flow01Workflow",
+      "power_teams.agentic_workflows.flow_01.FlowLoopInput",
+      "power_teams.agentic_workflows.flow_01.FlowInput",
+      "power_teams.agentic_workflows.flow_01.FlowLimits",
+      "power_teams.agentic_workflows.flow_01.FlowState",
+      "power_teams.agentic_workflows.flow_01.FlowStorage",
+      "power_teams.agentic_workflows.flow_01.FastApiServiceSignalAdapter",
+      "power_teams.agentic_workflows.flow_01.LocalReviewerExecutor",
+      "power_teams.agentic_workflows.flow_01.OpenCodeManagerExecutor",
+      "power_teams.agentic_workflows.flow_01.OpenCodeReviewerExecutor",
+      "power_teams.agentic_workflows.flow_01.OpenCodeWorkerExecutor",
+      "power_teams.agentic_workflows.flow_01.RecordingSignalAdapter",
+      "power_teams.agentic_workflows.flow_01.build_langgraph",
+      "power_teams.agentic_workflows.flow_01.interface.FlowValidationError"
+    ],
+    "constants": [
+      "CORE_DIR",
+      "TASK_SCENARIOS"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agentic_workflows\\flow_01\\workflow.py",
+    "lines": 889,
+    "functions": [
+      {
+        "name": "_state_from_raw",
+        "line": 36,
+        "args": [
+          "raw_state"
+        ]
+      },
+      {
+        "name": "_stringify_manager_field",
+        "line": 103,
+        "args": [
+          "value"
+        ]
+      },
+      {
+        "name": "_looks_like_structured_dump",
+        "line": 121,
+        "args": [
+          "text"
+        ]
+      },
+      {
+        "name": "_concise_manager_message",
+        "line": 132,
+        "args": [
+          "raw_message",
+          "suggestion_content"
+        ]
+      },
+      {
+        "name": "_manager_todo_items",
+        "line": 148,
+        "args": [
+          "todo_raw",
+          "suggestion_content"
+        ]
+      },
+      {
+        "name": "_extract_json_object",
+        "line": 165,
+        "args": [
+          "text"
+        ]
+      },
+      {
+        "name": "build_langgraph",
+        "line": 859,
+        "args": []
+      }
+    ],
+    "classes": [
+      {
+        "name": "ManagerExecutionResult",
+        "line": 57,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "WorkerExecutionResult",
+        "line": 69,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "ReviewerExecutionResult",
+        "line": 77,
+        "bases": [],
+        "methods": []
+      },
+      {
+        "name": "CancellationToken",
+        "line": 86,
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "cancelled",
+          "paused"
+        ]
+      },
+      {
+        "name": "ManagerExecutor",
+        "line": 91,
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "execute"
+        ]
+      },
+      {
+        "name": "WorkerExecutor",
+        "line": 95,
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "execute"
+        ]
+      },
+      {
+        "name": "ReviewerExecutor",
+        "line": 99,
+        "bases": [
+          "Protocol"
+        ],
+        "methods": [
+          "execute"
+        ]
+      },
+      {
+        "name": "LocalManagerExecutor",
+        "line": 215,
+        "bases": [],
+        "methods": [
+          "execute"
+        ]
+      },
+      {
+        "name": "OpenCodeManagerExecutor",
+        "line": 253,
+        "bases": [],
+        "methods": [
+          "execute",
+          "_prompt"
+        ]
+      },
+      {
+        "name": "LocalFileWorkerExecutor",
+        "line": 357,
+        "bases": [],
+        "methods": [
+          "execute"
+        ]
+      },
+      {
+        "name": "OpenCodeWorkerExecutor",
+        "line": 381,
+        "bases": [],
+        "methods": [
+          "execute",
+          "_prompt",
+          "_current_task_todos",
+          "_git_status",
+          "_extract_known_issues",
+          "_report_claims_file_change",
+          "_reported_file_evidence"
+        ]
+      },
+      {
+        "name": "LocalReviewerExecutor",
+        "line": 547,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "execute"
+        ]
+      },
+      {
+        "name": "OpenCodeReviewerExecutor",
+        "line": 573,
+        "bases": [],
+        "methods": [
+          "execute",
+          "_prompt",
+          "_list"
+        ]
+      },
+      {
+        "name": "Flow01Workflow",
+        "line": 655,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "run_once",
+          "run_loops",
+          "manager_step",
+          "worker_step",
+          "reviewer_step",
+          "to_output"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "subprocess",
+      "re",
+      "dataclasses.asdict",
+      "dataclasses.dataclass",
+      "pathlib.Path",
+      "typing.Any",
+      "typing.Protocol",
+      "adapters.FastApiServiceSignalAdapter",
+      "adapters.FlowSignalAdapter",
+      "interface.DB_PATH",
+      "interface.FlowInput",
+      "interface.FlowLimits",
+      "interface.FlowLoopInput",
+      "interface.FlowOutput",
+      "interface.FlowRoleOutput",
+      "interface.FlowState",
+      "interface.FlowStorage",
+      "interface.UIManagerMessage",
+      "interface.UIPlanData",
+      "interface.UISuggestion",
+      "interface.UITodoItem",
+      "interface.validate_flow_input",
+      "power_teams.agents.base.TOOL_FIRST_PRINCIPLE"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agents\\__init__.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agents\\base.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\agents\\manager.py",
+    "lines": 995,
+    "functions": [
+      {
+        "name": "_build_manager_instructions",
+        "line": 154,
+        "args": []
+      },
+      {
+        "name": "_generate_session_name",
+        "line": 165,
+        "args": [
+          "directive"
+        ]
+      },
+      {
+        "name": "_current_plan_todo_context",
+        "line": 232,
+        "args": [
+          "session_id"
+        ]
+      },
+      {
+        "name": "_unprocessed_human_manager_messages",
+        "line": 261,
+        "args": [
+          "messages"
+        ]
+      },
+      {
+        "name": "_mark_human_manager_messages_processed",
+        "line": 277,
+        "args": [
+          "latest_id"
+        ]
+      },
+      {
+        "name": "_section_block",
+        "line": 288,
+        "args": [
+          "name",
+          "content"
+        ]
+      },
+      {
+        "name": "_repair_manager_section",
+        "line": 292,
+        "args": [
+          "response",
+          "name",
+          "instructions"
+        ]
+      },
+      {
+        "name": "_repair_todo_json",
+        "line": 318,
+        "args": [
+          "response",
+          "todo_block"
+        ]
+      },
+      {
+        "name": "_is_valid_handoff_json",
+        "line": 360,
+        "args": [
+          "raw"
+        ]
+      },
+      {
+        "name": "_repair_handoff_json",
+        "line": 368,
+        "args": [
+          "response"
+        ]
+      },
+      {
+        "name": "manager_cycle",
+        "line": 399,
+        "args": []
+      },
+      {
+        "name": "_manager_cycle_impl",
+        "line": 409,
+        "args": []
+      },
+      {
+        "name": "_handle_manager_response",
+        "line": 772,
+        "args": [
+          "response",
+          "fallback_task",
+          "replace_suggestion_id"
+        ]
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "threading",
+      "pathlib.Path",
+      "power_teams.agents.base._acquire_manager_lock",
+      "power_teams.agents.base._add_manager_message",
+      "power_teams.agents.base._create_suggestion",
+      "power_teams.agents.base._extract_section",
+      "power_teams.agents.base._FORCE_PLANNING_INSTRUCTION",
+      "power_teams.agents.base._FORCE_TODO_INSTRUCTION",
+      "power_teams.agents.base._get_active_suggestion",
+      "power_teams.agents.base._get_latest_handoff",
+      "power_teams.agents.base._persist_plan_and_todos_from",
+      "power_teams.agents.base._parse_todo_block",
+      "power_teams.agents.base._parse_todo_update_json",
+      "power_teams.agents.base._list_manager_messages",
+      "power_teams.agents.base._release_manager_lock",
+      "power_teams.agents.base._upsert_handoff",
+      "power_teams.agents.base.TOOL_FIRST_PRINCIPLE",
+      "power_teams.agents.base.apply_handoff_update",
+      "power_teams.agents.base.connect",
+      "power_teams.agents.base.get_active_session_id",
+      "power_teams.agents.base.get_settings",
+      "power_teams.agents.base.handoff_summary",
+      "power_teams.agents.base.log",
+      "power_teams.agents.base.opencode_env",
+      "power_teams.agents.base.read_text",
+      "power_teams.agents.base.repair_mojibake",
+      "power_teams.agents.base.save_settings",
+      "power_teams.agents.base.send_to_agent",
+      "power_teams.agents.base.user_input_path",
+      "power_teams.agents.base.utc_now",
+      "power_teams.agents.base.worker_report_path",
+      "power_teams.agents.base.worker_status_path",
+      "power_teams.agents.base.write_text",
+      "power_teams.agents.base.DB_PATH",
+      "power_teams.agents.base.ROOT",
+      "power_teams.db.get_active_reviewer_session",
+      "power_teams.db.get_agent",
+      "power_teams.db.get_latest_user_directive",
+      "power_teams.db.get_latest_worker_report",
+      "power_teams.db.get_reviewer_feedback",
+      "power_teams.db.is_reviewer_timeout",
+      "power_teams.db.mark_reviewer_timeout",
+      "power_teams.db.update_user_directive_status",
+      "power_teams.db.update_suggestion",
+      "json",
+      "subprocess",
+      "time",
+      "uuid"
+    ],
+    "constants": [
+      "_MANAGER_FORMAT_INSTRUCTIONS"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agents\\reviewer.py",
+    "lines": 221,
+    "functions": [
+      {
+        "name": "capture_screenshots_simple",
+        "line": 100,
+        "args": [
+          "suggestion_id"
+        ]
+      },
+      {
+        "name": "run_reviewer_session",
+        "line": 115,
+        "args": [
+          "suggestion_id"
+        ]
+      },
+      {
+        "name": "_trigger_reviewer_async",
+        "line": 212,
+        "args": [
+          "suggestion_id"
+        ]
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "threading",
+      "datetime.datetime",
+      "datetime.timezone",
+      "power_teams.agents.base.TOOL_FIRST_PRINCIPLE",
+      "power_teams.agents.base._create_suggestion",
+      "power_teams.agents.base._extract_section",
+      "power_teams.agents.base._get_latest_handoff",
+      "power_teams.agents.base.connect",
+      "power_teams.agents.base.log",
+      "power_teams.agents.base.read_text",
+      "power_teams.agents.base.send_to_agent",
+      "power_teams.agents.base.update_agent",
+      "power_teams.agents.base.utc_now",
+      "power_teams.agents.base.worker_report_path",
+      "power_teams.agents.base.worker_status_path",
+      "power_teams.agents.base.write_text",
+      "power_teams.agents.base.ROOT",
+      "power_teams.agents.base.DB_PATH",
+      "power_teams.db.create_reviewer_session",
+      "power_teams.db.get_latest_worker_report",
+      "power_teams.db.update_reviewer_session"
+    ],
+    "constants": [
+      "REVIEWER_PROMPT_TEMPLATE"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\agents\\worker.py",
+    "lines": 176,
+    "functions": [
+      {
+        "name": "_report_claims_file_change",
+        "line": 28,
+        "args": [
+          "report"
+        ]
+      },
+      {
+        "name": "_should_trigger_reviewer",
+        "line": 35,
+        "args": [
+          "suggestion",
+          "report"
+        ]
+      },
+      {
+        "name": "_current_plan_todo_context",
+        "line": 49,
+        "args": [
+          "session_id"
+        ]
+      },
+      {
+        "name": "worker_cycle",
+        "line": 79,
+        "args": []
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "power_teams.agents.base.TOOL_FIRST_PRINCIPLE",
+      "power_teams.agents.base._get_active_suggestion",
+      "power_teams.agents.base._get_latest_handoff",
+      "power_teams.agents.base.get_active_session_id",
+      "power_teams.agents.base.handoff_summary",
+      "power_teams.agents.base.log",
+      "power_teams.agents.base.send_to_agent",
+      "power_teams.agents.base.update_agent",
+      "power_teams.agents.base.utc_now",
+      "power_teams.agents.base.worker_report_path",
+      "power_teams.agents.base.worker_status_path",
+      "power_teams.agents.base.write_text",
+      "power_teams.db.add_worker_report",
+      "power_teams.db.update_suggestion",
+      "power_teams.db.connect",
+      "power_teams.db.DB_PATH"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\cli.py",
+    "lines": 14,
+    "functions": [
+      {
+        "name": "main",
+        "line": 8,
+        "args": [
+          "argv"
+        ]
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "sys",
+      "power_teams.runtime.opencode_supervisor.main"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\db.py",
+    "lines": 1553,
+    "functions": [
+      {
+        "name": "connect",
+        "line": 15,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "_apply_migration_script",
+        "line": 24,
+        "args": [
+          "db",
+          "migration_text"
+        ]
+      },
+      {
+        "name": "_split_into_executable_units",
+        "line": 38,
+        "args": [
+          "text"
+        ]
+      },
+      {
+        "name": "init_db",
+        "line": 56,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "_ensure_agent_progress_columns",
+        "line": 73,
+        "args": [
+          "db"
+        ]
+      },
+      {
+        "name": "seed_default_agents",
+        "line": 85,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "get_agent",
+        "line": 176,
+        "args": [
+          "name",
+          "path"
+        ]
+      },
+      {
+        "name": "update_agent",
+        "line": 184,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "get_all_agents",
+        "line": 201,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "normalize_workspace_path",
+        "line": 212,
+        "args": [
+          "path_str"
+        ]
+      },
+      {
+        "name": "is_workspace_path_duplicate",
+        "line": 216,
+        "args": [
+          "normalized_path",
+          "exclude_ws_id",
+          "path"
+        ]
+      },
+      {
+        "name": "get_workspace_fingerprint",
+        "line": 231,
+        "args": [
+          "workspace_path"
+        ]
+      },
+      {
+        "name": "check_fingerprint_mismatch",
+        "line": 244,
+        "args": [
+          "ws_id",
+          "new_path"
+        ]
+      },
+      {
+        "name": "get_active_context",
+        "line": 263,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "get_latest_handoff",
+        "line": 313,
+        "args": [
+          "path",
+          "session_id"
+        ]
+      },
+      {
+        "name": "list_handoff_versions",
+        "line": 326,
+        "args": [
+          "path",
+          "session_id"
+        ]
+      },
+      {
+        "name": "upsert_handoff",
+        "line": 341,
+        "args": [
+          "updated_by",
+          "path",
+          "session_id"
+        ]
+      },
+      {
+        "name": "get_active_suggestion",
+        "line": 382,
+        "args": [
+          "path",
+          "session_id"
+        ]
+      },
+      {
+        "name": "create_suggestion",
+        "line": 397,
+        "args": [
+          "content",
+          "verification",
+          "related_files",
+          "handoff_version",
+          "session_id",
+          "path"
+        ]
+      },
+      {
+        "name": "update_suggestion",
+        "line": 416,
+        "args": [
+          "suggestion_id",
+          "path"
+        ]
+      },
+      {
+        "name": "list_suggestions",
+        "line": 438,
+        "args": [
+          "limit",
+          "path"
+        ]
+      },
+      {
+        "name": "list_unscoped_active_suggestions",
+        "line": 450,
+        "args": [
+          "limit",
+          "path"
+        ]
+      },
+      {
+        "name": "add_manager_message",
+        "line": 460,
+        "args": [
+          "content",
+          "path",
+          "session_id"
+        ]
+      },
+      {
+        "name": "list_manager_messages",
+        "line": 472,
+        "args": [
+          "path",
+          "session_id",
+          "limit"
+        ]
+      },
+      {
+        "name": "add_user_directive",
+        "line": 490,
+        "args": [
+          "session_id",
+          "directive"
+        ]
+      },
+      {
+        "name": "get_latest_user_directive",
+        "line": 510,
+        "args": [
+          "session_id"
+        ]
+      },
+      {
+        "name": "update_user_directive_status",
+        "line": 530,
+        "args": [
+          "directive_id",
+          "status"
+        ]
+      },
+      {
+        "name": "add_worker_report",
+        "line": 546,
+        "args": [
+          "session_id",
+          "report"
+        ]
+      },
+      {
+        "name": "get_latest_worker_report",
+        "line": 565,
+        "args": [
+          "session_id"
+        ]
+      },
+      {
+        "name": "create_session_arch",
+        "line": 579,
+        "args": [
+          "session_key",
+          "session_name",
+          "agent_name",
+          "folder_relation",
+          "worker_status",
+          "token_usage",
+          "path"
+        ]
+      },
+      {
+        "name": "restore_session_arch",
+        "line": 594,
+        "args": [
+          "arch_id",
+          "path"
+        ]
+      },
+      {
+        "name": "list_sessions_arch",
+        "line": 605,
+        "args": [
+          "limit",
+          "path"
+        ]
+      },
+      {
+        "name": "get_sessions_arch_count",
+        "line": 613,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "list_live_sessions",
+        "line": 620,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "get_live_sessions_count",
+        "line": 648,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "create_reviewer_session",
+        "line": 657,
+        "args": [
+          "suggestion_id",
+          "path"
+        ]
+      },
+      {
+        "name": "update_reviewer_session",
+        "line": 671,
+        "args": [
+          "session_id",
+          "path"
+        ]
+      },
+      {
+        "name": "get_active_reviewer_session",
+        "line": 687,
+        "args": [
+          "suggestion_id",
+          "path"
+        ]
+      },
+      {
+        "name": "is_reviewer_timeout",
+        "line": 698,
+        "args": [
+          "session_id",
+          "path"
+        ]
+      },
+      {
+        "name": "mark_reviewer_timeout",
+        "line": 717,
+        "args": [
+          "session_id",
+          "path"
+        ]
+      },
+      {
+        "name": "get_reviewer_feedback",
+        "line": 722,
+        "args": [
+          "suggestion_id",
+          "path"
+        ]
+      },
+      {
+        "name": "list_reviewer_sessions",
+        "line": 733,
+        "args": [
+          "limit",
+          "path"
+        ]
+      },
+      {
+        "name": "register_opencode_server",
+        "line": 742,
+        "args": [
+          "power_teams_session_id",
+          "agent_role",
+          "host",
+          "port",
+          "opencode_session_id",
+          "project_folder",
+          "pid",
+          "path"
+        ]
+      },
+      {
+        "name": "get_opencode_servers_for_session",
+        "line": 764,
+        "args": [
+          "power_teams_session_id",
+          "path"
+        ]
+      },
+      {
+        "name": "unregister_opencode_servers_for_session",
+        "line": 773,
+        "args": [
+          "power_teams_session_id",
+          "path"
+        ]
+      },
+      {
+        "name": "get_project_session",
+        "line": 787,
+        "args": [
+          "workspace_id",
+          "path"
+        ]
+      },
+      {
+        "name": "require_row_dict",
+        "line": 796,
+        "args": [
+          "row",
+          "context"
+        ]
+      },
+      {
+        "name": "require_row_value",
+        "line": 802,
+        "args": [
+          "row",
+          "key",
+          "context"
+        ]
+      },
+      {
+        "name": "_role_session_column",
+        "line": 820,
+        "args": [
+          "role"
+        ]
+      },
+      {
+        "name": "_other_role_session_columns",
+        "line": 827,
+        "args": [
+          "role"
+        ]
+      },
+      {
+        "name": "resolve_role_opencode_session",
+        "line": 832,
+        "args": [
+          "project_session_id",
+          "role"
+        ]
+      },
+      {
+        "name": "save_role_opencode_session",
+        "line": 871,
+        "args": [
+          "project_session_id",
+          "role",
+          "opencode_session_id"
+        ]
+      },
+      {
+        "name": "update_project_session",
+        "line": 924,
+        "args": [
+          "workspace_id",
+          "path"
+        ]
+      },
+      {
+        "name": "check_workspace_path",
+        "line": 939,
+        "args": [
+          "path",
+          "workspace_id"
+        ]
+      },
+      {
+        "name": "list_project_sessions",
+        "line": 964,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "get_project_session_sessions",
+        "line": 972,
+        "args": [
+          "workspace_id",
+          "path"
+        ]
+      },
+      {
+        "name": "get_pending_todos",
+        "line": 997,
+        "args": [
+          "path",
+          "priority"
+        ]
+      },
+      {
+        "name": "update_todo",
+        "line": 1010,
+        "args": [
+          "todo_id",
+          "path"
+        ]
+      },
+      {
+        "name": "get_todo",
+        "line": 1031,
+        "args": [
+          "todo_id",
+          "path"
+        ]
+      },
+      {
+        "name": "list_todos",
+        "line": 1037,
+        "args": [
+          "limit",
+          "path",
+          "status"
+        ]
+      },
+      {
+        "name": "register_opencode_server_instance",
+        "line": 1055,
+        "args": [
+          "power_teams_session_id",
+          "agent_role",
+          "host",
+          "port"
+        ]
+      },
+      {
+        "name": "update_opencode_server_status",
+        "line": 1092,
+        "args": [
+          "instance_id",
+          "status"
+        ]
+      },
+      {
+        "name": "list_opencode_server_instances",
+        "line": 1134,
+        "args": []
+      },
+      {
+        "name": "get_opencode_server_by_id",
+        "line": 1157,
+        "args": [
+          "instance_id",
+          "path"
+        ]
+      },
+      {
+        "name": "discover_external_opencode_servers",
+        "line": 1162,
+        "args": [
+          "ports",
+          "host"
+        ]
+      },
+      {
+        "name": "upsert_agent_binding",
+        "line": 1182,
+        "args": [
+          "role"
+        ]
+      },
+      {
+        "name": "get_agent_binding",
+        "line": 1213,
+        "args": [
+          "role",
+          "path"
+        ]
+      },
+      {
+        "name": "list_agent_bindings",
+        "line": 1220,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "clear_agent_binding",
+        "line": 1227,
+        "args": [
+          "role",
+          "path"
+        ]
+      },
+      {
+        "name": "get_runtime_policy",
+        "line": 1237,
+        "args": [
+          "name",
+          "path"
+        ]
+      },
+      {
+        "name": "upsert_runtime_policy",
+        "line": 1257,
+        "args": [
+          "name"
+        ]
+      },
+      {
+        "name": "create_checkpoint",
+        "line": 1301,
+        "args": [
+          "project_session_id",
+          "workspace_id",
+          "reason"
+        ]
+      },
+      {
+        "name": "get_latest_checkpoint",
+        "line": 1342,
+        "args": [
+          "project_session_id",
+          "status",
+          "path"
+        ]
+      },
+      {
+        "name": "get_checkpoint_by_id",
+        "line": 1362,
+        "args": [
+          "checkpoint_id",
+          "path"
+        ]
+      },
+      {
+        "name": "list_checkpoints",
+        "line": 1371,
+        "args": [
+          "project_session_id",
+          "limit",
+          "path"
+        ]
+      },
+      {
+        "name": "update_checkpoint_status",
+        "line": 1389,
+        "args": [
+          "checkpoint_id",
+          "status",
+          "notes",
+          "path"
+        ]
+      },
+      {
+        "name": "archive_checkpoint",
+        "line": 1398,
+        "args": [
+          "checkpoint_id",
+          "notes",
+          "path"
+        ]
+      },
+      {
+        "name": "discover_external_opencode_servers",
+        "line": 1412,
+        "args": [
+          "host",
+          "port_range",
+          "timeout"
+        ]
+      },
+      {
+        "name": "has_active_work",
+        "line": 1426,
+        "args": [
+          "session_id",
+          "path"
+        ]
+      },
+      {
+        "name": "get_runtime_policy",
+        "line": 1472,
+        "args": [
+          "path"
+        ]
+      },
+      {
+        "name": "upsert_runtime_policy",
+        "line": 1487,
+        "args": [
+          "name",
+          "close_behavior",
+          "background_mode_enabled",
+          "on_backend_exit",
+          "on_backend_crash_recovery",
+          "on_opencode_crash",
+          "max_managed_opencode_servers",
+          "default_topology",
+          "default_shared_port",
+          "allow_external_attach",
+          "allow_unknown_attach",
+          "path"
+        ]
+      },
+      {
+        "name": "get_runtime_status_summary",
+        "line": 1535,
+        "args": [
+          "session_id",
+          "path"
+        ]
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "os",
+      "sqlite3",
+      "pathlib.Path",
+      "typing.Optional"
+    ],
+    "constants": [
+      "ROOT",
+      "DATA_DIR",
+      "DB_PATH",
+      "SCHEMA_PATH",
+      "_HANDOFF_FIELDS",
+      "_ROLE_SESSION_COLUMNS",
+      "_DEFAULT_POLICY"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\integrations\\__init__.py",
+    "lines": 3,
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\integrations\\base_provider.py",
+    "lines": 42,
+    "functions": [
+      {
+        "name": "get_provider",
+        "line": 30,
+        "args": [
+          "agent_row",
+          "stream_file",
+          "log_fn"
+        ]
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "pathlib.Path",
+      "typing.Callable",
+      "power_teams.runtime.backends.base.BackendAdapter"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\integrations\\opencode_cli_provider.py",
+    "lines": 332,
+    "functions": [
+      {
+        "name": "_log",
+        "line": 31,
+        "args": [
+          "msg"
+        ]
+      },
+      {
+        "name": "_append",
+        "line": 41,
+        "args": [
+          "path",
+          "value"
+        ]
+      },
+      {
+        "name": "_opencode_env",
+        "line": 47,
+        "args": []
+      },
+      {
+        "name": "_opencode_bin",
+        "line": 59,
+        "args": []
+      },
+      {
+        "name": "_server_reachable",
+        "line": 64,
+        "args": [
+          "host",
+          "port",
+          "timeout"
+        ]
+      }
+    ],
+    "classes": [
+      {
+        "name": "OpencodeCLIProvider",
+        "line": 73,
+        "bases": [
+          "BaseProvider"
+        ],
+        "methods": [
+          "__init__",
+          "health_check",
+          "ensure_running",
+          "send_message",
+          "_base_url",
+          "_precreate_session",
+          "_build_cmd",
+          "_run_cmd"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "os",
+      "subprocess",
+      "threading",
+      "time",
+      "pathlib.Path",
+      "typing.Callable",
+      "power_teams.integrations.base_provider.BaseProvider"
+    ],
+    "constants": [
+      "ROOT",
+      "FILES_DIR",
+      "LOG_DIR",
+      "RUN_LOG",
+      "OPENCODE_CONFIG_HOME",
+      "OPENCODE_DATA_HOME",
+      "OPENCODE_CONFIG_DIR"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\integrations\\opencode_provider.py",
+    "lines": 1094,
+    "functions": [],
+    "classes": [
+      {
+        "name": "OpencodeConnectionError",
+        "line": 59,
+        "bases": [
+          "Exception"
+        ],
+        "methods": []
+      },
+      {
+        "name": "OpencodeRequestError",
+        "line": 62,
+        "bases": [
+          "Exception"
+        ],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "name": "OpencodeEmptyResponse",
+        "line": 72,
+        "bases": [
+          "Exception"
+        ],
+        "methods": [
+          "__init__"
+        ]
+      },
+      {
+        "name": "OpencodeServeProvider",
+        "line": 83,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_url",
+          "_get",
+          "_post",
+          "_patch",
+          "_delete",
+          "_put",
+          "_check",
+          "_json",
+          "_stream_body",
+          "_msg_id",
+          "connect",
+          "is_connected",
+          "version",
+          "network_state",
+          "check_network_health",
+          "health",
+          "global_events",
+          "list_projects",
+          "current_project",
+          "get_path",
+          "get_vcs",
+          "dispose_instance",
+          "get_config",
+          "update_config",
+          "get_config_providers",
+          "list_providers",
+          "connected_providers",
+          "list_models",
+          "default_model_string",
+          "get_provider_auth",
+          "oauth_authorize",
+          "oauth_callback",
+          "set_auth",
+          "create_session",
+          "list_sessions",
+          "session_status",
+          "get_session",
+          "update_session",
+          "delete_session",
+          "session_children",
+          "session_todo",
+          "init_session",
+          "fork_session",
+          "abort_session",
+          "share_session",
+          "unshare_session",
+          "session_diff",
+          "summarize_session",
+          "revert_message",
+          "unrevert_session",
+          "respond_permission",
+          "list_questions",
+          "reply_question",
+          "reject_question",
+          "send_message",
+          "_await_reply_sse",
+          "send_message_async",
+          "list_messages",
+          "get_message",
+          "send_command",
+          "run_shell",
+          "extract_text",
+          "list_commands",
+          "find_text",
+          "find_file",
+          "find_symbol",
+          "list_files",
+          "read_file",
+          "file_status",
+          "tool_ids",
+          "list_tools",
+          "lsp_status",
+          "formatter_status",
+          "list_mcp",
+          "add_mcp",
+          "list_agents",
+          "write_log",
+          "tui_append_prompt",
+          "tui_submit_prompt",
+          "tui_clear_prompt",
+          "tui_show_toast",
+          "tui_execute_command",
+          "tui_open_sessions",
+          "tui_open_models",
+          "tui_open_themes",
+          "tui_open_help",
+          "stream_events",
+          "_sse_stream",
+          "get_openapi_spec",
+          "quick_ask",
+          "__repr__"
+        ]
+      }
+    ],
+    "imports": [
+      "json",
+      "uuid",
+      "logging",
+      "os",
+      "sys",
+      "datetime.datetime",
+      "pathlib.Path",
+      "requests",
+      "requests.auth.HTTPBasicAuth"
+    ],
+    "constants": [
+      "PROJECT_ROOT",
+      "LOG_FILE"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\mvp\\__init__.py",
+    "lines": 3,
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\mvp\\runner.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\__init__.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\backend_registry.py",
+    "lines": 101,
+    "functions": [
+      {
+        "name": "get_backend",
+        "line": 55,
+        "args": [
+          "agent_row"
+        ]
+      },
+      {
+        "name": "list_backends",
+        "line": 93,
+        "args": []
+      },
+      {
+        "name": "is_registered",
+        "line": 98,
+        "args": [
+          "backend_type"
+        ]
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "pathlib.Path",
+      "typing.Callable",
+      "power_teams.runtime.backends.base.BackendAdapter"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\backends\\__init__.py",
+    "lines": 3,
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\backends\\base.py",
+    "lines": 111,
+    "functions": [],
+    "classes": [
+      {
+        "name": "BackendAdapter",
+        "line": 29,
+        "bases": [
+          "ABC"
+        ],
+        "methods": [
+          "start",
+          "stop",
+          "health",
+          "run",
+          "logs",
+          "backend_name",
+          "agent_name"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "abc.ABC",
+      "abc.abstractmethod",
+      "typing.Callable"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\backends\\hermes.py",
+    "lines": 86,
+    "functions": [],
+    "classes": [
+      {
+        "name": "HermesAdapter",
+        "line": 30,
+        "bases": [
+          "BackendAdapter"
+        ],
+        "methods": [
+          "__init__",
+          "backend_name",
+          "agent_name",
+          "_not_implemented",
+          "start",
+          "stop",
+          "health",
+          "run",
+          "logs"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "typing.Callable",
+      "power_teams.runtime.backends.base.BackendAdapter",
+      "power_teams.runtime.result_schema"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\backends\\openclaw.py",
+    "lines": 94,
+    "functions": [],
+    "classes": [
+      {
+        "name": "OpenClawAdapter",
+        "line": 30,
+        "bases": [
+          "BackendAdapter"
+        ],
+        "methods": [
+          "__init__",
+          "backend_name",
+          "agent_name",
+          "_not_implemented",
+          "start",
+          "stop",
+          "health",
+          "run",
+          "logs"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "typing.Callable",
+      "power_teams.runtime.backends.base.BackendAdapter",
+      "power_teams.runtime.result_schema"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\backends\\opencode.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\opencode_binary.py",
+    "lines": 55,
+    "functions": [
+      {
+        "name": "_settings_value",
+        "line": 20,
+        "args": []
+      },
+      {
+        "name": "_resolve_explicit",
+        "line": 35,
+        "args": [
+          "value"
+        ]
+      },
+      {
+        "name": "find_opencode_bin",
+        "line": 42,
+        "args": []
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "os",
+      "pathlib.Path"
+    ],
+    "constants": [
+      "ROOT",
+      "RUNTIME_DIR",
+      "MANAGED_OPENCODE_BIN"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\runtime\\opencode_connect.py",
+    "lines": 477,
+    "functions": [],
+    "classes": [
+      {
+        "name": "OpenCodeConnect",
+        "line": 22,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "_get",
+          "_post",
+          "_patch",
+          "_delete",
+          "health",
+          "list_projects",
+          "current_project",
+          "current_path",
+          "vcs_info",
+          "dispose_instance",
+          "get_config",
+          "update_config",
+          "list_config_providers",
+          "list_providers",
+          "provider_auth",
+          "oauth_authorize",
+          "oauth_callback",
+          "list_sessions",
+          "create_session",
+          "all_session_statuses",
+          "get_session",
+          "delete_session",
+          "update_session",
+          "session_children",
+          "session_todos",
+          "init_session",
+          "fork_session",
+          "abort_session",
+          "share_session",
+          "unshare_session",
+          "session_diff",
+          "summarize_session",
+          "revert_message",
+          "unrevert_session",
+          "respond_permission",
+          "list_messages",
+          "get_message",
+          "send_message",
+          "prompt_async",
+          "execute_command",
+          "shell",
+          "list_commands",
+          "find_text",
+          "find_file",
+          "find_symbol",
+          "list_files",
+          "read_file",
+          "file_status",
+          "experimental_tool_ids",
+          "experimental_tools",
+          "lsp_status",
+          "formatter_status",
+          "mcp_status",
+          "add_mcp_server",
+          "list_agents",
+          "write_log",
+          "tui_append_prompt",
+          "tui_open_help",
+          "tui_open_sessions",
+          "tui_open_themes",
+          "tui_open_models",
+          "tui_submit_prompt",
+          "tui_clear_prompt",
+          "tui_execute_command",
+          "tui_show_toast",
+          "tui_control_next",
+          "tui_control_response",
+          "set_auth"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "urllib.error",
+      "urllib.request",
+      "typing.Any"
+    ],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\opencode_lifecycle.py",
+    "lines": 999,
+    "functions": [
+      {
+        "name": "_load_workspace_cwd",
+        "line": 30,
+        "args": []
+      },
+      {
+        "name": "get_cached_available_agents",
+        "line": 43,
+        "args": []
+      },
+      {
+        "name": "preferred_primary_agent",
+        "line": 46,
+        "args": [
+          "agents"
+        ]
+      },
+      {
+        "name": "discover_available_agents",
+        "line": 62,
+        "args": [
+          "host",
+          "port",
+          "timeout"
+        ]
+      },
+      {
+        "name": "opencode_env",
+        "line": 96,
+        "args": []
+      },
+      {
+        "name": "find_opencode_bin",
+        "line": 110,
+        "args": []
+      },
+      {
+        "name": "utc_now",
+        "line": 115,
+        "args": []
+      },
+      {
+        "name": "is_port_reachable",
+        "line": 119,
+        "args": [
+          "host",
+          "port",
+          "timeout"
+        ]
+      },
+      {
+        "name": "is_opencode_reachable",
+        "line": 127,
+        "args": [
+          "host",
+          "port",
+          "timeout"
+        ]
+      },
+      {
+        "name": "is_opencode_process_port",
+        "line": 142,
+        "args": [
+          "port"
+        ]
+      },
+      {
+        "name": "_list_opencode_pids_with_ports",
+        "line": 187,
+        "args": []
+      },
+      {
+        "name": "_kill_opencode_pid",
+        "line": 247,
+        "args": [
+          "pid"
+        ]
+      },
+      {
+        "name": "cleanup_orphan_opencode_servers",
+        "line": 263,
+        "args": [
+          "db_path",
+          "host",
+          "exclude_ports"
+        ]
+      },
+      {
+        "name": "stop_process_tree",
+        "line": 339,
+        "args": [
+          "proc"
+        ]
+      },
+      {
+        "name": "creation_flags",
+        "line": 971,
+        "args": []
+      },
+      {
+        "name": "_pipe_process_output",
+        "line": 977,
+        "args": [
+          "proc",
+          "log"
+        ]
+      },
+      {
+        "name": "wait_for_opencode_http",
+        "line": 987,
+        "args": [
+          "host",
+          "port",
+          "proc",
+          "timeout"
+        ]
+      }
+    ],
+    "classes": [
+      {
+        "name": "OpenCodeLifecycleManager",
+        "line": 365,
+        "bases": [],
+        "methods": [
+          "__init__",
+          "get_supervisor",
+          "list_managed_servers",
+          "list_external_servers",
+          "refresh_external_servers",
+          "list_unknown_servers",
+          "refresh_server_health",
+          "start_managed_server",
+          "reconcile_runtime",
+          "_recent_start_failure_count",
+          "_clear_bindings_for_server",
+          "_bind_all_roles_to_server",
+          "stop_managed_server",
+          "restart_managed_server",
+          "discover_external",
+          "attach_external_server",
+          "stop_all_managed",
+          "_find_remaining_opencode_pids",
+          "create_runtime_checkpoint",
+          "restore_checkpoint_to_registry",
+          "get_runtime_health"
+        ]
+      }
+    ],
+    "imports": [
+      "__future__.annotations",
+      "json",
+      "os",
+      "socket",
+      "subprocess",
+      "threading",
+      "time",
+      "datetime.datetime",
+      "datetime.timezone",
+      "pathlib.Path",
+      "typing.Optional",
+      "urllib.request",
+      "urllib.error",
+      "power_teams.db.DB_PATH",
+      "power_teams.db.connect",
+      "power_teams.db.register_opencode_server_instance",
+      "power_teams.db.update_opencode_server_status",
+      "power_teams.db.list_opencode_server_instances",
+      "power_teams.db.get_opencode_server_by_id",
+      "power_teams.db.discover_external_opencode_servers",
+      "power_teams.db.upsert_agent_binding",
+      "power_teams.db.get_agent_binding",
+      "power_teams.db.list_agent_bindings",
+      "power_teams.db.clear_agent_binding",
+      "power_teams.db.get_runtime_policy",
+      "power_teams.db.upsert_runtime_policy",
+      "power_teams.db.create_checkpoint",
+      "power_teams.db.get_latest_checkpoint",
+      "power_teams.db.get_checkpoint_by_id",
+      "power_teams.db.update_checkpoint_status",
+      "power_teams.db.archive_checkpoint",
+      "power_teams.db.has_active_work",
+      "power_teams.db.get_runtime_status_summary",
+      "power_teams.db.get_active_context"
+    ],
+    "constants": [
+      "ROOT",
+      "RUNTIME_DIR",
+      "PROCESS_DIR",
+      "LOG_DIR",
+      "OPENCODE_CONFIG_HOME",
+      "OPENCODE_DATA_HOME",
+      "OPENCODE_CONFIG_DIR"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\runtime\\opencode_supervisor.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\runtime\\result_schema.py",
+    "lines": 140,
+    "functions": [
+      {
+        "name": "new_run_id",
+        "line": 55,
+        "args": []
+      },
+      {
+        "name": "ok",
+        "line": 62,
+        "args": []
+      },
+      {
+        "name": "err",
+        "line": 90,
+        "args": []
+      },
+      {
+        "name": "is_retryable",
+        "line": 118,
+        "args": [
+          "result"
+        ]
+      },
+      {
+        "name": "get_text",
+        "line": 126,
+        "args": [
+          "result"
+        ]
+      },
+      {
+        "name": "get_error_message",
+        "line": 134,
+        "args": [
+          "result"
+        ]
+      }
+    ],
+    "classes": [],
+    "imports": [
+      "__future__.annotations",
+      "uuid",
+      "typing.Any"
+    ],
+    "constants": [
+      "STATUS_COMPLETED",
+      "STATUS_FAILED",
+      "STATUS_RUNNING",
+      "STATUS_HEALTHY",
+      "STATUS_UNHEALTHY",
+      "STATUS_STARTED",
+      "STATUS_STOPPED"
+    ]
+  },
+  {
+    "path": "core\\power_teams\\skills\\db_skill.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  },
+  {
+    "path": "core\\power_teams\\skills\\db_tool.py",
+    "error": "invalid non-printable character U+FEFF (<unknown>, line 1)",
+    "functions": [],
+    "classes": [],
+    "imports": [],
+    "constants": []
+  }
+]

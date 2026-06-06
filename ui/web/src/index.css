@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Amber workbench dark theme */
+    --bg-base:    #111111;
+    --bg-panel:   #181818;
+    --bg-raised:  #1f1f1f;
+    --bg-hover:   #252525;
+
+    --border:     #2a2a2a;
+    --border-dim: #1f1f1f;
+
+    --text-primary:   #f0ede8;
+    --text-secondary: #9ca3af;
+    --text-dim:       #4b5563;
+
+    /* Semantic state colors */
+    --amber:      #f59e0b;
+    --amber-dim:  #78350f;
+    --amber-bg:   #1c1408;
+
+    --green:      #22c55e;
+    --green-dim:  #14532d;
+    --green-bg:   #0a1f0f;
+
+    --red:        #ef4444;
+    --red-dim:    #7f1d1d;
+    --red-bg:     #1c0a0a;
+
+    --purple:     #a78bfa;
+    --purple-dim: #4c1d95;
+    --purple-bg:  #12091f;
+
+    --blue:       #60a5fa;
+    --blue-dim:   #1e3a5f;
+    --blue-bg:    #080f1c;
+  }
+
+  .light {
+    --bg-base:    #f5f5f7;
+    --bg-panel:   #ffffff;
+    --bg-raised:  #f2f2f4;
+    --bg-hover:   #ebebed;
+
+    --border:     #d2d2d7;
+    --border-dim: #e5e5ea;
+
+    --text-primary:   #1d1d1f;
+    --text-secondary: #424245;
+    --text-dim:       #6e6e73;
+
+    --amber:      #bf5a00;
+    --amber-dim:  #9a4a00;
+    --amber-bg:   #fff4e5;
+
+    --green:      #1a7f37;
+    --green-dim:  #116329;
+    --green-bg:   #dafbe1;
+
+    --red:        #cf222e;
+    --red-dim:    #a40e26;
+    --red-bg:     #ffebe9;
+
+    --purple:     #8250df;
+    --purple-dim: #6639ba;
+    --purple-bg:  #fbefff;
+
+    --blue:       #0969da;
+    --blue-dim:   #0550ae;
+    --blue-bg:    #ddf4ff;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+  .light ::-webkit-scrollbar-thumb { background: #b0b0a8; }
+  .light ::-webkit-scrollbar-thumb:hover { background: #909088; }
+}
+
+@layer utilities {
+  /* Amber breathing glow for active/busy states */
+  @keyframes amber-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+    50%       { box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+  }
+  .amber-pulse { animation: amber-pulse 2s ease-in-out infinite; }
+
+  /* New-event glow fade */
+  @keyframes fadeGlow {
+    0%   { background: rgba(245,158,11,0.08); box-shadow: 0 0 6px rgba(245,158,11,0.25); }
+    100% { background: transparent; box-shadow: none; }
+  }
+
+  /* Blue glow for newest output */
+  @keyframes blueGlow {
+    0%   { box-shadow: 0 0 20px rgba(59,130,246,0.5); opacity: 1; }
+    100% { box-shadow: 0 0 8px rgba(59,130,246,0.2); opacity: 1; }
+  }
+  .blue-glow { animation: blueGlow 1.2s ease-out forwards; }
+
+  /* New top-of-stream item: slides in from above with fade, drawing the eye up.
+     The rest of the list visually appears to be "pushed down" beneath it. */
+  @keyframes slideInFromTop {
+    0%   { transform: translateY(-14px) scale(0.98); opacity: 0; max-height: 0; }
+    40%  {                                              opacity: 0.6; }
+    100% { transform: translateY(0)     scale(1);    opacity: 1; max-height: 4000px; }
+  }
+  .stream-newest-enter {
+    animation: slideInFromTop 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Older items: gentle settle-down when their rank changes */
+  @keyframes streamSettle {
+    0%   { transform: translateY(-6px); opacity: 0.85; }
+    100% { transform: translateY(0);    opacity: 1; }
+  }
+  .stream-settle { animation: streamSettle 280ms ease-out both; }
+
+  /* 1-second glow flash applied when remote data updates (plan / todos). */
+  @keyframes dataGlow {
+    0%   { box-shadow: 0 0 0 0 rgba(245,158,11,0.0);  background-color: rgba(245,158,11,0.18); }
+    30%  { box-shadow: 0 0 12px 2px rgba(245,158,11,0.55); }
+    100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.0);  background-color: transparent; }
+  }
+  .data-glow { animation: dataGlow 1000ms ease-out 1; }
+
+  /* Smooth collapse/expand height transition */
+  .collapse-expand {
+    transition: max-height 200ms ease-out, opacity 200ms ease-out;
+    overflow: hidden;
+  }
+
+  /* Hover scale for cards */
+  .hover-scale {
+    transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+  }
+  .hover-scale:hover {
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(59,130,246,0.15);
+  }
+
+  /* Button hover blue accent */
+  .btn-blue-accent {
+    transition: background 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out;
+  }
+  .btn-blue-accent:hover {
+    background: rgba(59,130,246,0.1) !important;
+    border-color: #3b82f6 !important;
+    color: #60a5fa !important;
+  }
+
+  /* Tab crossfade */
+  .tab-crossfade {
+    transition: opacity 200ms ease-out, border-color 200ms ease-out;
+  }
+
+  /* Left border state indicator */
+  .state-idle    { border-left: 2px solid var(--green); }
+  .state-busy    { border-left: 2px solid var(--amber); }
+  .state-waiting { border-left: 2px solid var(--purple); }
+  .state-error   { border-left: 2px solid var(--red); }
+  .state-offline { border-left: 2px solid #333; }
+}
