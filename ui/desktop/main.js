@@ -7,15 +7,14 @@ const http = require('http');
 const fs = require('fs');
 const net = require('net');
 
-// ─── 設定 ───────────────────────────────────────────────────────────────────
+// Settings
 let SERVER_PORT = Number(process.env.TASK_HOUNDS_PORT || 8766);
 const SERVER_HOST = '127.0.0.1';
 function serverUrl() {
   return `http://${SERVER_HOST}:${SERVER_PORT}`;
 }
-// 使用 FastAPI/legacy 都支援的 API endpoint 作為 health check
 function healthCheckUrl() {
-  return `${serverUrl()}/api/agents`;
+  return `${serverUrl()}/api/health`;
 }
 
 function canUsePort(port) {
@@ -29,22 +28,153 @@ function canUsePort(port) {
   });
 }
 
+function getListeningPids(port) {
+  const cmd = process.platform === 'win32'
+    ? [
+        'powershell',
+        '-NoProfile',
+        '-Command',
+        `Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique`
+      ]
+    : ['sh', '-c', `lsof -tiTCP:${port} -sTCP:LISTEN 2>/dev/null`];
+
+  try {
+    const output = execFileSync(cmd[0], cmd.slice(1), {
+      encoding: 'utf8',
+      timeout: 5000,
+      windowsHide: true,
+    });
+    return [...new Set(output
+      .split(/\r?\n/)
+      .map((line) => Number(line.trim()))
+      .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid))];
+  } catch (_) {
+    return [];
+  }
+}
+
+function stopListeningPids(pids) {
+  let stopped = true;
+  for (const pid of pids) {
+    try {
+      if (process.platform === 'win32') {
+        execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], {
+          stdio: 'ignore',
+          timeout: 10000,
+          windowsHide: true,
+        });
+      } else {
+        execFileSync('kill', ['-TERM', String(pid)], {
+          stdio: 'ignore',
+          timeout: 10000,
+        });
+      }
+    } catch (err) {
+      console.warn(`[Electron] Failed to stop pid=${pid}: ${err.message}`);
+      stopped = false;
+    }
+  }
+  return stopped;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitUntilCanUsePort(port, timeoutMs = 5000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (await canUsePort(port)) return true;
+    await sleep(200);
+  }
+  return canUsePort(port);
+}
+
+async function chooseAlternateServerPort(preferred) {
+  if (preferred !== 8766 && await canUsePort(8766)) return 8766;
+  if (preferred !== 8765 && await canUsePort(8765)) return 8765;
+  for (let port = 18951; port <= 19000; port++) {
+    if (port === preferred) continue;
+    if (await canUsePort(port)) return port;
+  }
+  return null;
+}
+
 async function chooseServerPort() {
   const preferred = Number(process.env.TASK_HOUNDS_PORT || 8766);
   if (await canUsePort(preferred)) return preferred;
-  if (preferred !== 8766 && await canUsePort(8766)) return 8766;
-  if (await canUsePort(8765)) return 8765;
-  for (let port = 18765; port <= 18850; port++) {
-    if (await canUsePort(port)) return port;
+
+  const pids = getListeningPids(preferred);
+  const pidText = pids.length ? `\n\nProcess id(s): ${pids.join(', ')}` : '';
+  const choice = dialog.showMessageBoxSync({
+    type: 'warning',
+    title: 'Backend port already in use',
+    message: `Port ${SERVER_HOST}:${preferred} is already in use.`,
+    detail:
+      'Do you want Task Hounds to stop the process using this port?\n\n' +
+      'Yes: stop it and reuse the requested port.\n' +
+      'No: keep it running and start Task Hounds on a new port.\n' +
+      'Quit: close Task Hounds without starting.' +
+      pidText,
+    buttons: ['Yes, stop it', 'No, use new port', 'Quit'],
+    defaultId: 1,
+    cancelId: 2,
+    noLink: true,
+  });
+
+  if (choice === 2) {
+    app.quit();
+    return null;
   }
+
+  if (choice === 0) {
+    if (!pids.length) {
+      dialog.showErrorBox(
+        'Could not stop backend',
+        `Task Hounds could not identify the process using ${SERVER_HOST}:${preferred}.`
+      );
+      app.quit();
+      return null;
+    }
+    stopListeningPids(pids);
+    if (await waitUntilCanUsePort(preferred)) return preferred;
+
+    const retryChoice = dialog.showMessageBoxSync({
+      type: 'warning',
+      title: 'Port is still busy',
+      message: `Port ${SERVER_HOST}:${preferred} is still unavailable.`,
+      detail:
+        'Task Hounds stopped the detected process, but Windows has not released the port or another process took it.\n\n' +
+        'Do you want to start Task Hounds on a new port instead?',
+      buttons: ['Use new port', 'Quit'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (retryChoice === 0) {
+      const alternate = await chooseAlternateServerPort(preferred);
+      if (alternate !== null) return alternate;
+    }
+    dialog.showErrorBox(
+      'Port is still busy',
+      `Task Hounds tried to stop the process using ${SERVER_HOST}:${preferred}, but the port is still unavailable.`
+    );
+    app.quit();
+    return null;
+  }
+
+  const alternate = await chooseAlternateServerPort(preferred);
+  if (alternate !== null) return alternate;
   throw new Error('No free local port is available for Task Hounds backend');
 }
-const POLL_INTERVAL_MS = 500;   // 每隔多久 ping 一次 server
-const MAX_WAIT_MS      = 30000; // 最多等待 30 秒
+const POLL_INTERVAL_MS = 500;   // How often to ping the server.
+// Supervisor starts OpenCode before FastAPI, so a cold first launch can take
+// longer than a direct backend start while the splash remains visible.
+const MAX_WAIT_MS      = 75000;
 
-// ─── 找到可用的 Python 指令 ───────────────────────────────────────────────────
+// Python command resolution
 function resolvePythonCmd() {
-  // Windows 優先試 'py'（Python Launcher），再試 'python'，最後 'python3'
+  // On Windows, prefer the Python Launcher, then python, then python3.
   const candidates = process.platform === 'win32'
     ? ['py', 'python', 'python3']
     : ['python3', 'python'];
@@ -52,72 +182,52 @@ function resolvePythonCmd() {
   for (const cmd of candidates) {
     try {
       execFileSync(cmd, ['--version'], { stdio: 'ignore', timeout: 3000, windowsHide: true });
-      console.log(`[Electron] 找到 Python 指令: ${cmd}`);
+      console.log(`[Electron] Found Python command: ${cmd}`);
       return cmd;
     } catch (_) {
-      // 繼續嘗試下一個
+      // Try the next candidate.
     }
   }
-  // 找不到時回傳預設值，讓 spawn error handler 顯示錯誤
+  // Return a default command so the spawn error handler can show the failure.
   const fallback = process.platform === 'win32' ? 'python' : 'python3';
-  console.warn(`[Electron] 找不到可用的 Python 指令，回傳預設值: ${fallback}`);
+  console.warn(`[Electron] No usable Python command found; falling back to: ${fallback}`);
   return fallback;
 }
 
-function opencodeSearchDirs() {
-  const dirs = [];
-  if (process.env.USERPROFILE) {
-    dirs.push(path.join(process.env.USERPROFILE, '.opencode', 'bin'));
-  }
-  if (process.env.APPDATA) {
-    dirs.push(path.join(process.env.APPDATA, 'npm'));
-  }
-  return dirs.filter(Boolean);
+function augmentedEnv(extra = {}) {
+  return Object.assign({}, process.env, extra);
 }
 
-function augmentedEnv(extra = {}) {
-  const env = Object.assign({}, process.env, extra);
-  const pathKey = Object.prototype.hasOwnProperty.call(env, 'Path') ? 'Path' : 'PATH';
-  const currentPath = env[pathKey] || '';
-  const additions = opencodeSearchDirs().filter(dir => fs.existsSync(dir));
-  env[pathKey] = [currentPath, ...additions].filter(Boolean).join(path.delimiter);
-  return env;
+function managedOpenCodeBin() {
+  return path.join(
+    APP_ROOT,
+    'core',
+    'runtime',
+    'opencode_runtime',
+    'node_modules',
+    'opencode-ai',
+    'bin',
+    process.platform === 'win32' ? 'opencode.exe' : 'opencode'
+  );
 }
 
 function hasOpenCodeCommand() {
-  const env = augmentedEnv();
-  for (const dir of opencodeSearchDirs()) {
-    for (const name of ['opencode.exe', 'opencode.cmd', 'opencode.ps1']) {
-      if (fs.existsSync(path.join(dir, name))) {
-        return true;
-      }
-    }
-  }
-  try {
-    if (process.platform === 'win32') {
-      execFileSync('cmd', ['/c', 'where', 'opencode'], { env, stdio: 'ignore', timeout: 3000, windowsHide: true });
-    } else {
-      execFileSync('sh', ['-lc', 'command -v opencode'], { env, stdio: 'ignore', timeout: 3000 });
-    }
-    return true;
-  } catch (_) {
-    return false;
-  }
+  return fs.existsSync(managedOpenCodeBin());
 }
 
 function showOpenCodeInstallDialog() {
   dialog.showErrorBox(
-    'OpenCode is not installed',
-    'Task Hounds needs the OpenCode CLI before it can start agents.\n\nPlease install OpenCode globally, then restart Task Hounds:\n\nnpm install -g opencode-ai\n\nIf OpenCode is already installed, make sure one of these folders is in PATH:\n\n%USERPROFILE%\\.opencode\\bin\n%APPDATA%\\npm\n\nAfter installation, run this to confirm:\n\nopencode --version'
+    'Managed OpenCode is not installed',
+    `Task Hounds needs its managed OpenCode runtime before it can start agents.\n\nRun installation.cmd from the Task Hounds root, then restart Task Hounds.\n\nExpected binary:\n\n${managedOpenCodeBin()}`
   );
 }
 
-// 找到 app root（開發 vs 打包後路徑不同）
+// Resolve the app root. Dev and packaged paths are different.
 const APP_ROOT = app.isPackaged
   ? process.resourcesPath
   : path.join(__dirname, '..', '..');
 
-const SERVER_SCRIPT = path.join(APP_ROOT, 'core', 'api', 'fastapi_server.py');
+const SERVER_PACKAGE = 'task_hounds_api';
 const APP_ICON = app.isPackaged
   ? path.join(process.resourcesPath, 'docs', 'image', 'Task-Hounds-Logo-Small.png')
   : path.join(APP_ROOT, 'docs', 'image', 'Task-Hounds-Logo-Small.png');
@@ -137,28 +247,28 @@ function desktopRuntimeDir() {
     : path.join(APP_ROOT, 'core', 'runtime');
 }
 
-// ─── 啟動前 debug 資訊 ────────────────────────────────────────────────────────
-console.log('[Electron] === 啟動診斷資訊 ===');
+// Startup diagnostics
+console.log('[Electron] === Startup diagnostics ===');
 console.log('[Electron] app.isPackaged  :', app.isPackaged);
 console.log('[Electron] __dirname       :', __dirname);
-console.log('[Electron] resourcesPath   :', process.resourcesPath || '(不適用)');
+console.log('[Electron] resourcesPath   :', process.resourcesPath || '(not applicable)');
 console.log('[Electron] APP_ROOT        :', APP_ROOT);
-console.log('[Electron] SERVER_SCRIPT   :', SERVER_SCRIPT);
-console.log('[Electron] SERVER_SCRIPT 存在:', fs.existsSync(SERVER_SCRIPT));
+console.log('[Electron] SERVER_PACKAGE  :', SERVER_PACKAGE);
+console.log('[Electron] package dir     :', path.join(APP_ROOT, 'core', SERVER_PACKAGE));
 console.log('[Electron] healthCheckUrl():', healthCheckUrl());
 
-// ─── 全域變數 ────────────────────────────────────────────────────────────────
+// Globals
 let mainWindow   = null;
 let splashWindow = null;
 let pythonProcess = null;
-let _abortServerWait = null; // 用於在 Python 異常退出時立即中止 health check 迴圈
+let _abortServerWait = null; // Abort health checks immediately if Python exits.
 
-// ─── 全域錯誤處理 ────────────────────────────────────────────────────────────
+// Global error handling
 app.on('uncaughtException', (err, origin) => {
   console.error(`[Electron] uncaughtException at ${origin}:`, err);
   dialog.showErrorBox(
-    '應用程式發生未預期錯誤',
-    `發生了一個無法處理的錯誤，應用程式將關閉。\n\n錯誤：${err.message}\n\n請回報此問題。`
+    'Unexpected application error',
+    `An unhandled error occurred and Task Hounds will close.\n\nError: ${err.message}\n\nPlease report this issue.`
   );
   app.exit(1);
 });
@@ -166,30 +276,33 @@ app.on('uncaughtException', (err, origin) => {
 process.on('uncaughtException', (err) => {
   console.error('[Electron] process uncaughtException:', err);
   dialog.showErrorBox(
-    '應用程式發生未預期錯誤',
-    `發生了一個無法處理的錯誤，應用程式將關閉。\n\n錯誤：${err.message}\n\n請回報此問題。`
+    'Unexpected application error',
+    `An unhandled error occurred and Task Hounds will close.\n\nError: ${err.message}\n\nPlease report this issue.`
   );
   app.exit(1);
 });
 
-// ─── 啟動後端伺服器（支援 PyInstaller 封裝模式） ──────────────────────────────
+// Start the runtime owner. In packaged builds this is a self-contained
+// PyInstaller runtime; development keeps using the local Python environment.
 function startPythonServer() {
-  // 優先使用 PyInstaller 封裝的 exe（位於 extra-bin/）
   const EXTRA_BIN_DIR = app.isPackaged
     ? path.join(process.resourcesPath, 'extra-bin')
     : path.join(__dirname, 'extra-bin');
-  const PACKAGED_EXE = path.join(EXTRA_BIN_DIR, 'task-hounds-fastapi-server.exe');
+  const PACKAGED_EXE = path.join(
+    EXTRA_BIN_DIR,
+    'task-hounds-runtime',
+    'task-hounds-runtime.exe'
+  );
 
   let usePackaged = false;
 
   if (fs.existsSync(PACKAGED_EXE)) {
-    console.log(`[Electron] 發現封裝後的 server exe: ${PACKAGED_EXE}`);
+    console.log(`[Electron] Found packaged server exe: ${PACKAGED_EXE}`);
     usePackaged = true;
-  } else if (!fs.existsSync(SERVER_SCRIPT)) {
-    // fastapi_server.py 也不存在，無法啟動
-    const msg = `找不到後端伺服器！\n\n已嘗試：\n  1. ${PACKAGED_EXE}\n  2. ${SERVER_SCRIPT}\n\nAPP_ROOT：${APP_ROOT}\n\n請確認已執行過建置流程。`;
+  } else if (!fs.existsSync(path.join(APP_ROOT, 'core', SERVER_PACKAGE))) {
+    const msg = `Cannot find the backend server.\n\nTried:\n  1. ${PACKAGED_EXE}\n  2. python -m ${SERVER_PACKAGE} (requires core/${SERVER_PACKAGE} package)\n\nAPP_ROOT: ${APP_ROOT}\n\nPlease run installation.cmd to install Python dependencies.`;
     console.error('[Electron]', msg);
-    dialog.showErrorBox('找不到後端腳本', msg);
+    dialog.showErrorBox('Backend server not found', msg);
     app.quit();
     return;
   }
@@ -202,16 +315,27 @@ function startPythonServer() {
   const env = augmentedEnv({
     POWER_TEAMS_DB: path.join(dataDir, 'power_teams.db'),
     POWER_TEAMS_RUNTIME_DIR: runtimeDir,
+    TASK_HOUNDS_APP_ROOT: APP_ROOT,
+    TASK_HOUNDS_PORT: String(SERVER_PORT),
+    TASK_HOUNDS_PORT_CONFLICT: 'quit',
     PYTHONIOENCODING: 'utf-8',
+    PYTHONPATH: [
+      process.env.PYTHONPATH,
+      path.join(APP_ROOT, 'core'),
+    ].filter(Boolean).join(path.delimiter),
   });
 
   if (usePackaged) {
-    // ── PyInstaller 封裝模式：直接執行 exe ────────────────────────────────
-    // exe 自包含，不需要 Python 解釋器
-    console.log(`[Electron] 啟動封裝 server: "${PACKAGED_EXE}" --port ${SERVER_PORT}`);
+    // PyInstaller mode: run the packaged exe directly.
+    // The exe is self-contained and does not need a Python interpreter.
+    console.log(`[Electron] Starting packaged supervisor: "${PACKAGED_EXE}" --port ${SERVER_PORT}`);
     console.log(`[Electron] cwd: ${APP_ROOT}`);
 
-    pythonProcess = spawn(PACKAGED_EXE, ['--port', String(SERVER_PORT)], {
+    pythonProcess = spawn(PACKAGED_EXE, [
+      '--runtime-role', 'supervisor',
+      '--host', SERVER_HOST,
+      '--port', String(SERVER_PORT),
+    ], {
       cwd: APP_ROOT,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -227,36 +351,40 @@ function startPythonServer() {
     });
 
     pythonProcess.on('error', (err) => {
-      console.error('[Electron] 無法啟動封裝 server:', err.message);
+      console.error('[Electron] Failed to start packaged server:', err.message);
       dialog.showErrorBox(
-        'Server 啟動失敗',
-        `無法啟動後端伺服器（封裝模式）。\n\n錯誤：${err.message}`
+        'Server startup failed',
+        `Could not start the backend server in packaged mode.\n\nError: ${err.message}`
       );
       app.quit();
     });
 
     pythonProcess.on('exit', (code, signal) => {
-      console.log(`[Server] 已結束 (code=${code}, signal=${signal})`);
+      console.log(`[Server] exited (code=${code}, signal=${signal})`);
       if (code !== 0 && code !== null) {
-        console.error(`[Electron] Server 異常退出，code=${code}`);
+        console.error(`[Electron] Server exited unexpectedly, code=${code}`);
         if (_abortServerWait) {
-          _abortServerWait(new Error(`Server 異常退出 (exit code=${code})`));
+          _abortServerWait(new Error(`Server exited unexpectedly (exit code=${code})`));
         } else {
           dialog.showErrorBox(
-            'Server 異常退出',
-            `後端伺服器意外結束 (exit code=${code})。\n應用程式將關閉。`
+            'Server exited unexpectedly',
+            `The backend server exited unexpectedly (exit code=${code}).\nTask Hounds will close.`
           );
           app.quit();
         }
       }
     });
   } else {
-    // ── 傳統 Python 模式 ─────────────────────────────────────────────────
+    // Python mode
     const PYTHON_CMD = resolvePythonCmd();
-    console.log(`[Electron] 啟動 Python server: ${PYTHON_CMD} "${SERVER_SCRIPT}" --port ${SERVER_PORT}`);
+    console.log(`[Electron] starting supervisor: ${PYTHON_CMD} -m ${SERVER_PACKAGE}.supervisor --port ${SERVER_PORT}`);
     console.log(`[Electron] cwd: ${APP_ROOT}`);
 
-    pythonProcess = spawn(PYTHON_CMD, [SERVER_SCRIPT, '--port', String(SERVER_PORT)], {
+    pythonProcess = spawn(PYTHON_CMD, [
+      '-m', `${SERVER_PACKAGE}.supervisor`,
+      '--host', SERVER_HOST,
+      '--port', String(SERVER_PORT),
+    ], {
       cwd: APP_ROOT,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -272,24 +400,24 @@ function startPythonServer() {
     });
 
     pythonProcess.on('error', (err) => {
-      console.error('[Electron] 無法啟動 Python process:', err.message);
+      console.error('[Electron] Failed to start Python process:', err.message);
       dialog.showErrorBox(
-        'Python 啟動失敗',
-        `無法啟動後端伺服器。\n請確認已安裝 Python 3.9+。\n\n錯誤：${err.message}`
+        'Python startup failed',
+        `Could not start the runtime supervisor.\nPlease confirm Python 3.11+ is installed.\n\nError: ${err.message}`
       );
       app.quit();
     });
 
     pythonProcess.on('exit', (code, signal) => {
-      console.log(`[Python] 已結束 (code=${code}, signal=${signal})`);
+      console.log(`[Python] exited (code=${code}, signal=${signal})`);
       if (code !== 0 && code !== null) {
-        console.error(`[Electron] Python server 異常退出，code=${code}`);
+        console.error(`[Electron] Python server exited unexpectedly, code=${code}`);
         if (_abortServerWait) {
-          _abortServerWait(new Error(`Python server 異常退出 (exit code=${code})`));
+          _abortServerWait(new Error(`Python server exited unexpectedly (exit code=${code})`));
         } else {
           dialog.showErrorBox(
-            'Python Server 異常退出',
-            `後端伺服器意外結束 (exit code=${code})。\n應用程式將關閉。`
+            'Python server exited unexpectedly',
+            `The backend server exited unexpectedly (exit code=${code}).\nTask Hounds will close.`
           );
           app.quit();
         }
@@ -298,14 +426,14 @@ function startPythonServer() {
   }
 }
 
-// ─── 等待 server 就緒 ─────────────────────────────────────────────────────────
+// Wait for the backend server to become ready.
 function waitForServer(timeout) {
   const start = Date.now();
   let pingCount = 0;
-  let done = false; // 防止 resolve/reject 被多次呼叫
+  let done = false; // Prevent multiple resolve/reject calls.
 
   return new Promise((resolve, reject) => {
-    // 將 abort 函式暴露到模組層，讓 Python exit handler 可以中止迴圈
+    // Expose abort at module scope so the Python exit handler can stop polling.
     _abortServerWait = (err) => {
       if (!done) {
         done = true;
@@ -315,28 +443,28 @@ function waitForServer(timeout) {
     };
 
     function ping() {
-      if (done) return; // 已被外部中止，停止 ping
+      if (done) return; // Polling was stopped externally.
 
       const elapsed = Date.now() - start;
       if (elapsed >= timeout) {
         done = true;
         _abortServerWait = null;
-        return reject(new Error(`Server 未在 ${timeout / 1000} 秒內就緒`));
+        return reject(new Error(`Server was not ready within ${timeout / 1000} seconds`));
       }
 
       pingCount++;
       if (pingCount % 10 === 1) {
-        // 每 5 秒 log 一次，避免洗版
-        console.log(`[Electron] health check #${pingCount} → ${healthCheckUrl()} (elapsed ${Math.round(elapsed / 1000)}s)`);
+        // Log every 5 seconds to keep startup output readable.
+        console.log(`[Electron] health check #${pingCount} -> ${healthCheckUrl()} (elapsed ${Math.round(elapsed / 1000)}s)`);
       }
 
-      let settled = false; // 防止 error + timeout 雙重觸發 ping
+      let settled = false; // Prevent error + timeout from scheduling duplicate pings.
 
       const req = http.get(healthCheckUrl(), (res) => {
-        // 必須消費 response body，否則 socket 不會釋放
+        // Consume the response body so the socket is released.
         res.resume();
         if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300 && !done) {
-          console.log(`[Electron] server 就緒！HTTP ${res.statusCode}`);
+          console.log(`[Electron] server ready. HTTP ${res.statusCode}`);
           done = true;
           _abortServerWait = null;
           resolve();
@@ -354,7 +482,7 @@ function waitForServer(timeout) {
       req.setTimeout(1000, () => {
         if (settled) return;
         settled = true;
-        req.destroy(); // destroy 會觸發 error，但 settled flag 已鎖住
+        req.destroy(); // destroy triggers error, but settled already guards it.
         if (!done) setTimeout(ping, POLL_INTERVAL_MS);
       });
     }
@@ -363,7 +491,7 @@ function waitForServer(timeout) {
   });
 }
 
-// ─── Splash 視窗 ──────────────────────────────────────────────────────────────
+// Splash window
 function createSplashWindow() {
   try {
     splashWindow = new BrowserWindow({
@@ -388,23 +516,23 @@ function createSplashWindow() {
     splashWindow.on('closed', () => { splashWindow = null; });
 
     splashWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-      console.error(`[Electron] Splash 載入失敗: ${errorCode} ${errorDescription}`);
+      console.error(`[Electron] Splash failed to load: ${errorCode} ${errorDescription}`);
       splashWindow.close();
     });
   } catch (err) {
-    console.error('[Electron] 建立 Splash 視窗失敗:', err);
-    dialog.showErrorBox('啟動失敗', `無法顯示啟動畫面。\n\n錯誤：${err.message}`);
+    console.error('[Electron] Failed to create splash window:', err);
+    dialog.showErrorBox('Startup failed', `Could not display the startup screen.\n\nError: ${err.message}`);
   }
 }
 
-// ─── 主視窗 ───────────────────────────────────────────────────────────────────
+// Main window
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    show: false,          // 等 ready-to-show 再顯示
+    show: false,          // Show only after ready-to-show.
     frame: true,
     title: 'Task Hounds',
     backgroundColor: '#0f172a',
@@ -417,19 +545,19 @@ function createMainWindow() {
     },
   });
 
-  // 外部連結用瀏覽器開啟，不在 app 內導航
+  // Open external links in the browser instead of navigating inside the app.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  // 關閉 splash、顯示主視窗（只做一次）
+  // Close the splash and show the main window once.
   let splashClosed = false;
   function showMain() {
     try {
       if (splashClosed) return;
       splashClosed = true;
-      console.log('[Electron] 顯示主視窗，關閉 splash');
+      console.log('[Electron] Showing main window and closing splash');
       if (splashWindow && !splashWindow.isDestroyed()) {
         splashWindow.close();
       }
@@ -438,29 +566,29 @@ function createMainWindow() {
         mainWindow.focus();
       }
     } catch (err) {
-      console.error('[Electron] showMain 執行時發生錯誤:', err);
+      console.error('[Electron] showMain failed:', err);
     }
   }
 
-  // 主要路徑：ready-to-show（頁面渲染完成後才顯示，避免白屏閃爍）
+  // Primary path: wait for rendering before showing, avoiding a white flash.
   mainWindow.on('ready-to-show', () => {
-    console.log('[Electron] ready-to-show 觸發');
+    console.log('[Electron] ready-to-show fired');
     showMain();
   });
 
-  // 備援路徑：did-finish-load（若 ready-to-show 因某種原因未觸發）
+  // Fallback path if ready-to-show does not fire.
   mainWindow.webContents.on('did-finish-load', () => {
-    console.log('[Electron] did-finish-load 觸發');
-    // 給 ready-to-show 500ms 優先，若還沒觸發則強制顯示
+    console.log('[Electron] did-finish-load fired');
+    // Give ready-to-show 500ms priority, then force showing.
     setTimeout(showMain, 500);
   });
 
-  // 頁面載入失敗時也要關閉 splash
+  // Close the splash even when the page fails to load.
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    console.error(`[Electron] 頁面載入失敗: ${errorCode} ${errorDescription}`);
+    console.error(`[Electron] Page failed to load: ${errorCode} ${errorDescription}`);
     dialog.showErrorBox(
-      '頁面載入失敗',
-      `無法載入主視窗內容 (錯誤碼: ${errorCode})。\n\n${errorDescription}`
+      'Page load failed',
+      `Could not load the main window content (error code: ${errorCode}).\n\n${errorDescription}`
     );
     showMain();
   });
@@ -470,22 +598,22 @@ function createMainWindow() {
   });
 
   mainWindow.on('unresponsive', () => {
-    console.warn('[Electron] 主視窗無回應');
+    console.warn('[Electron] Main window is unresponsive');
     dialog.showErrorBox(
-      '視窗無回應',
-      '主視窗似乎已停止回應。可能有一個程序正在忙碌中。'
+      'Window is unresponsive',
+      'The main window has stopped responding. A process may be busy.'
     );
   });
 
   mainWindow.on('responsive', () => {
-    console.log('[Electron] 主視窗已恢復回應');
+    console.log('[Electron] Main window is responsive again');
   });
 
   mainWindow.webContents.on('render-process-gone', (event, details) => {
-    console.error('[Electron] 渲染程序已終止:', details.reason);
+    console.error('[Electron] Renderer process ended:', details.reason);
     dialog.showErrorBox(
-      '視窗程序崩潰',
-      `視窗程序意外關閉 (${details.reason})。\n應用程式將重啟。`
+      'Renderer process crashed',
+      `The renderer process closed unexpectedly (${details.reason}).\nTask Hounds will restart.`
     );
     app.exit(1);
   });
@@ -503,22 +631,23 @@ ipcMain.handle('dialog:pick-folder', async () => {
   return result.filePaths[0];
 });
 
-// ─── 驗證前端 dist/ 是否存在 ────────────────────────────────────────────────
+// Verify frontend dist exists.
 const FRONTEND_DIST = path.join(APP_ROOT, 'ui', 'web', 'dist');
 if (!fs.existsSync(FRONTEND_DIST)) {
-  const msg = `找不到前端建構產出目錄！\n路徑：${FRONTEND_DIST}\n\n請先執行以下指令建置前端：\ncd ui/web && npm run build`;
+  const msg = `Cannot find the frontend build output directory.\nPath: ${FRONTEND_DIST}\n\nPlease build the frontend first:\ncd ui/web && npm run build`;
   console.error('[Electron]', msg);
-  dialog.showErrorBox('前端建構產出不存在', msg);
+  dialog.showErrorBox('Frontend build output missing', msg);
   app.quit();
   return;
 }
 
-// ─── App 生命週期 ─────────────────────────────────────────────────────────────
+// App lifecycle
 app.whenReady().then(async () => {
   SERVER_PORT = await chooseServerPort();
+  if (SERVER_PORT === null) return;
   console.log(`[Electron] selected backend port: ${SERVER_PORT}`);
 
-  // 先顯示 Splash
+  // Show the splash first.
   createSplashWindow();
 
   if (!hasOpenCodeCommand()) {
@@ -530,18 +659,18 @@ app.whenReady().then(async () => {
     return;
   }
 
-  // 啟動 Python
+  // Start Python.
   startPythonServer();
 
   try {
-    // 等待 server 就緒
+    // Wait for the server to become ready.
     await waitForServer(MAX_WAIT_MS);
-    console.log('[Electron] server 已就緒，載入主視窗...');
+    console.log('[Electron] server is ready; loading main window...');
 
-    // ─── 前置檢查：確認 frontend/dist/ 存在 ─────────────────────────────
+    // Preflight: confirm frontend/dist exists.
     const distPath = path.join(APP_ROOT, 'ui', 'web', 'dist', 'index.html');
     if (!fs.existsSync(distPath)) {
-      console.error('[Electron] 找不到 frontend build:', distPath);
+      console.error('[Electron] Frontend build not found:', distPath);
       dialog.showErrorBox(
         'Frontend Build Missing',
         `Cannot find frontend build at:\n${distPath}\n\nPlease run: cd ui/web && npm run build`
@@ -555,17 +684,17 @@ app.whenReady().then(async () => {
     if (splashWindow && !splashWindow.isDestroyed()) {
       splashWindow.close();
     }
-    // 判斷是逾時還是 Python 異常退出，給出對應的錯誤訊息
-    const isPythonCrash = err.message.includes('異常退出');
+    // Distinguish a timeout from a Python process crash.
+    const isPythonCrash = err.message.includes('exited unexpectedly');
     dialog.showErrorBox(
-      isPythonCrash ? 'Python Server 啟動失敗' : 'Server 啟動逾時',
+      isPythonCrash ? 'Python server startup failed' : 'Server startup timed out',
       isPythonCrash
-        ? `後端伺服器在啟動時異常退出。\n\n${err.message}\n\n請確認：\n• 已安裝所有 Python 依賴套件 (pip install -r requirements.txt)\n• 查看 console 中的 [Python ERR] 輸出以了解詳細原因`
-        : `後端 Python server 未能在 ${MAX_WAIT_MS / 1000} 秒內啟動。\n\n` +
-          '請確認：\n' +
-          '• 已安裝 Python 3.9+\n' +
-          '• 已安裝所有 Python 依賴套件 (pip install -r requirements.txt)\n' +
-          `• Port ${SERVER_PORT} 未被其他程式佔用`
+        ? `The backend server exited during startup.\n\n${err.message}\n\nPlease confirm:\n- All Python dependencies are installed (pip install -r requirements.txt)\n- The [Python ERR] console output has been checked for details`
+        : `The Task Hounds runtime did not start within ${MAX_WAIT_MS / 1000} seconds.\n\n` +
+          'Please confirm:\n' +
+          '- Python 3.9+ is installed\n' +
+          '- All Python dependencies are installed (pip install -r requirements.txt)\n' +
+          `- Port ${SERVER_PORT} is not used by another process`
     );
     app.quit();
   }
@@ -583,12 +712,12 @@ app.on('activate', () => {
   }
 });
 
-// ─── 關閉時清理 Python process ────────────────────────────────────────────────
+// Clean up the Python process before quitting.
 app.on('before-quit', () => {
   if (pythonProcess && !pythonProcess.killed) {
-    console.log('[Electron] 關閉 Python server...');
+    console.log('[Electron] Stopping runtime supervisor...');
     if (process.platform === 'win32') {
-      // Windows 需要用 taskkill 才能確保整個 process tree 被終止
+      // Windows needs taskkill to terminate the full process tree.
       spawn('taskkill', ['/PID', String(pythonProcess.pid), '/T', '/F'], {
         windowsHide: true,
         stdio: 'ignore',

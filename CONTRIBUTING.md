@@ -5,7 +5,7 @@ Thanks for helping improve Task Hounds.
 ## Development Setup
 
 ```bash
-git clone https://github.com/catowabisabi/task-hounds.git
+git clone https://github.com/catowabisabi/task-hounds-public.git
 cd task-hounds
 python -m venv .venv
 ```
@@ -53,6 +53,18 @@ Frontend build:
 cd ui/web
 npm run build
 ```
+
+## Local Cleanup
+
+Generated runtime, build, and test artifacts are ignored by Git. To remove
+them from a development checkout:
+
+```powershell
+.\docs\scripts\clean-local.ps1
+```
+
+Add `-IncludeDependencies` to remove installed Node.js dependencies as well.
+The cleanup script verifies every target remains inside the repository.
 
 ## Pull Requests
 

@@ -1,0 +1,5 @@
+/audit_migration/** export-ignore
+/core/db/rebuild_db/** export-ignore
+/.agents/** export-ignore
+/.hermes/** export-ignore
+/.omo/** export-ignore

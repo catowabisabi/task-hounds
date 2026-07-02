@@ -32,15 +32,8 @@
     ],
     "extraResources": [
       {
-        "from": "../../core/api",
-        "to": "core/api",
-        "filter": [
-          "**/*.py"
-        ]
-      },
-      {
-        "from": "../../core/power_teams",
-        "to": "core/power_teams",
+        "from": "../../core/task_hounds_api",
+        "to": "core/task_hounds_api",
         "filter": [
           "**/*.py",
           "**/*.md"
@@ -52,6 +45,29 @@
         "filter": [
           "schema.sql",
           "migrations/**/*.sql"
+        ]
+      },
+      {
+        "from": "../../core/runtime/opencode_config",
+        "to": "core/runtime/opencode_config",
+        "filter": [
+          "opencode.jsonc"
+        ]
+      },
+      {
+        "from": "../../core/runtime/opencode_runtime",
+        "to": "core/runtime/opencode_runtime",
+        "filter": [
+          "package.json",
+          "package-lock.json",
+          "node_modules/opencode-ai/**/*"
+        ]
+      },
+      {
+        "from": "extra-bin/task-hounds-runtime",
+        "to": "extra-bin/task-hounds-runtime",
+        "filter": [
+          "**/*"
         ]
       },
       {

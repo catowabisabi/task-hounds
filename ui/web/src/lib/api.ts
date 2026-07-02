@@ -1,8 +1,8 @@
+import { debugFunctionCall, debugLogger } from "./debug";
+
 const FASTAPI_BASE = "http://127.0.0.1:8766";
-const LEGACY_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8765";
 
 let _base: string | null = null;
-let _basePromise: Promise<string> | null = null;
 
 function emitApiError(message: string, path: string) {
   window.dispatchEvent(new CustomEvent("task-hounds-api-error", {
@@ -10,58 +10,20 @@ function emitApiError(message: string, path: string) {
   }));
 }
 
-async function tryPing(url: string, timeout = 3000): Promise<boolean> {
-  for (const endpoint of ["/api/health", "/api/ping"]) {
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), timeout);
-      const res = await fetch(`${url}${endpoint}`, { signal: ctrl.signal });
-      clearTimeout(timer);
-      if (res.status < 502) return true;
-    } catch {
-      // Try the next health endpoint.
-    }
-  }
-  return false;
-}
-
 async function resolveBase(): Promise<string> {
+  debugFunctionCall("api.resolveBase", { cachedBase: _base });
   if (_base) return _base;
-  if (_basePromise) return _basePromise;
-
-  _basePromise = (async (): Promise<string> => {
-    const currentOrigin = window.location.origin;
-
-    if (await tryPing(currentOrigin)) {
-      _base = currentOrigin;
-      console.log(`[API] Using current origin ${currentOrigin} (same origin, no CORS)`);
-      return currentOrigin;
-    }
-
-    if (currentOrigin !== FASTAPI_BASE) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (await tryPing(FASTAPI_BASE)) {
-          _base = FASTAPI_BASE;
-          console.log(`[API] Connected to FastAPI on port 8766`);
-          return FASTAPI_BASE;
-        }
-        if (attempt < 2) {
-          console.log(`[API] FastAPI not ready, retrying in 1s (${attempt + 1}/3)...`);
-          await new Promise(r => setTimeout(r, 1000));
-        }
-      }
-    }
-
-    _base = LEGACY_BASE;
-    console.log(`[API] Falling back to legacy server on port 8765`);
-    return LEGACY_BASE;
-  })();
-
-  return _basePromise;
+  const currentOrigin = window.location.origin;
+  const resolvedBase: string = import.meta.env.VITE_API_BASE
+    || (/^https?:\/\//i.test(currentOrigin) ? currentOrigin : FASTAPI_BASE);
+  _base = resolvedBase;
+  debugLogger.setBaseUrl(resolvedBase);
+  console.log(`[API] Using ${resolvedBase}`);
+  return resolvedBase;
 }
 
 function getBase(): string {
-  return _base ?? window.location.origin ?? LEGACY_BASE;
+  return _base ?? FASTAPI_BASE;
 }
 
 // ── Online state & retry counter ────────────────────────────────────────────
@@ -70,6 +32,7 @@ export let isOnline = true;
 export let failureCount = 0;
 
 export async function retryFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  debugFunctionCall("api.retryFetch", { path, method: init?.method || "GET" });
   const base = await resolveBase();
   const maxRetries = 3;
   const delays = [1000, 2000, 4000]; // 1s, 2s, 4s
@@ -102,13 +65,14 @@ export async function retryFetch<T>(path: string, init?: RequestInit): Promise<T
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  debugFunctionCall("api.apiFetch", { path, method: init?.method || "GET" });
   const base = await resolveBase();
   const res = await fetch(`${base}${path}`, {
     headers: { "Content-Type": "application/json", ...init?.headers },
     ...init,
   });
   if (!res.ok) {
-    let detail = "";
+    let detail: string;
     try {
       const body = await res.json();
       detail = body?.message || body?.error || body?.detail || "";
@@ -145,19 +109,12 @@ export const apiDelete = <T>(path: string) =>
   apiFetch<T>(path, { method: "DELETE" });
 
 export async function debugLog(msg: string, source = "frontend") {
-  try {
-    const base = await resolveBase();
-    await fetch(`${base}/api/debug-logs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ msg, source }),
-    });
-  } catch {
-    console.log(`[DEBUG-FALLBACK] ${msg}`);
-  }
+  debugFunctionCall("api.debugLog", { msg, source });
+  debugLogger.log("APP_DEBUG", source, msg);
 }
 
 export function wsUrl(path: string) {
+  debugFunctionCall("api.wsUrl", { path });
   return `${getBase().replace("http", "ws")}${path}`;
 }
 
@@ -174,6 +131,10 @@ export interface Agent {
   state: "idle" | "busy" | "waiting" | "error" | "offline";
   task_complete: number;
   last_error: string | null;
+  current_step?: string | null;
+  step_source?: string | null;
+  current_step_started_at?: string | null;
+  last_stream_at?: string | null;
   last_seen: string | null;
   session_id: string | null;
   backend_type: string;
@@ -191,6 +152,8 @@ export interface Suggestion {
   status?: string;
   queue_status?: string;
   status_label?: string;
+  scope_warning?: string;
+  cleanup_only?: boolean;
   verification?: string;
   related_files?: string[];
   created_at?: string;
@@ -205,12 +168,40 @@ export interface ManagerMessage {
   status_label?: string;
 }
 
+export interface Flow01Reports {
+  ok: boolean;
+  flow: "flow_01";
+  session_id: string;
+  worker: null | {
+    report: string;
+    files_changed: string[];
+    test_result: string;
+    known_issues: string[];
+    created_at: string;
+  };
+  reviewer: null | {
+    status: string;
+    qa_result: string;
+    review_notes: string;
+    bugs: string[];
+    uiux_suggestions: string[];
+    possible_problems: string[];
+    safety_security_risks: string[];
+    scripts_documented: string;
+    started_at: string;
+    completed_at: string | null;
+    created_at: string;
+  };
+}
+
 export interface ChatMessage {
   id: number;
   session_id: string;
   sender: "user" | "chat" | string;
   content: string;
   created_at: string;
+  directive_proposal?: string | null;
+  proposal_status?: "proposed" | "saving" | "saved" | null;
 }
 
 export interface SessionInfo {

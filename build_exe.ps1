@@ -3,12 +3,11 @@
     Build the Task Hounds Electron portable app.
 
 .DESCRIPTION
-    Current desktop builds do not package a separate Python server exe.
-    This script builds the React frontend, then runs electron-builder so the
-    Task Hounds exe contains the current frontend and bundled source resources.
+    Builds the React frontend, freezes the Supervisor/API/GraphFlow worker into
+    a self-contained Python runtime, then packages everything with Electron.
 
 .NOTES
-    Requires Node.js and ui/desktop dependencies.
+    Requires Node.js, Python 3.11+, project Python dependencies, and PyInstaller.
 #>
 
 param(
@@ -23,6 +22,14 @@ $PROJECT_ROOT = Split-Path -Parent $MyInvocation.MyCommand.Path
 $UI_WEB = Join-Path $PROJECT_ROOT 'ui\web'
 $UI_DESKTOP = Join-Path $PROJECT_ROOT 'ui\desktop'
 $OUTPUT_DIR = Join-Path $UI_DESKTOP 'dist'
+$RUNTIME_BUILD = Join-Path $PROJECT_ROOT 'build\pyinstaller'
+$RUNTIME_DIST = Join-Path $PROJECT_ROOT 'dist\task-hounds-runtime'
+$EXTRA_BIN = Join-Path $UI_DESKTOP 'extra-bin'
+$EXTRA_RUNTIME = Join-Path $EXTRA_BIN 'task-hounds-runtime'
+$SPEC_FILE = Join-Path $PROJECT_ROOT 'pyinstaller-server.spec'
+$BUILD_VENV = Join-Path $PROJECT_ROOT '.build-venv'
+$BUILD_PYTHON = Join-Path $BUILD_VENV 'Scripts\python.exe'
+$REQUIREMENTS = Join-Path $PROJECT_ROOT 'requirements.txt'
 
 function Test-Command {
     param([string]$Cmd)
@@ -41,7 +48,7 @@ function Write-Step {
 
 Write-Host "Task Hounds Build Script" -ForegroundColor Green
 Write-Host "Project root: $PROJECT_ROOT"
-Write-Host "Mode: Electron app only; no PyInstaller/server exe`n"
+Write-Host "Mode: self-contained Electron + Python runtime`n"
 Write-Host "Backend default: FastAPI on 127.0.0.1:8766`n"
 
 Write-Step "Checking prerequisites"
@@ -55,6 +62,16 @@ if (-not (Test-Command 'npm')) {
 }
 Write-Host "  Node.js: $(node --version)"
 Write-Host "  npm    : $(npm --version)"
+if (-not (Test-Command 'py')) {
+    Write-Error "Python 3.11+ is required to build the desktop runtime."
+    exit 1
+}
+py -3.12 --version *> $null
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Python 3.12 is required for reproducible release builds."
+    exit 1
+}
+Write-Host "  Python : $(py -3.12 --version)"
 
 if ($StopRunningApp) {
     Write-Step "Stopping running Task Hounds processes"
@@ -99,6 +116,42 @@ try {
 } finally {
     Pop-Location
 }
+
+Write-Step "Building self-contained runtime"
+if (-not (Test-Path $BUILD_PYTHON)) {
+    Write-Host "  Creating Python 3.12 build environment..."
+    py -3.12 -m venv $BUILD_VENV
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not create the Python 3.12 build environment"
+    }
+}
+
+Write-Host "  Installing locked runtime build dependencies..."
+& $BUILD_PYTHON -m pip install --disable-pip-version-check -r $REQUIREMENTS pyinstaller
+if ($LASTEXITCODE -ne 0) {
+    throw "Runtime build dependency installation failed"
+}
+& $BUILD_PYTHON -m pip install --disable-pip-version-check --no-deps -e $PROJECT_ROOT
+if ($LASTEXITCODE -ne 0) {
+    throw "Task Hounds package installation failed"
+}
+
+& $BUILD_PYTHON -m PyInstaller $SPEC_FILE --clean --noconfirm `
+    --workpath $RUNTIME_BUILD `
+    --distpath (Join-Path $PROJECT_ROOT 'dist')
+if ($LASTEXITCODE -ne 0) {
+    throw "Desktop runtime build failed"
+}
+if (-not (Test-Path (Join-Path $RUNTIME_DIST 'task-hounds-runtime.exe'))) {
+    throw "Runtime executable was not produced: $RUNTIME_DIST"
+}
+
+if (Test-Path $EXTRA_RUNTIME) {
+    Remove-Item -LiteralPath $EXTRA_RUNTIME -Recurse -Force
+}
+New-Item -ItemType Directory -Path $EXTRA_BIN -Force | Out-Null
+Copy-Item -Path $RUNTIME_DIST -Destination $EXTRA_RUNTIME -Recurse -Force
+Write-Host "  Runtime: $EXTRA_RUNTIME"
 
 if (-not $SkipElectron) {
     Write-Step "Building Electron portable exe"

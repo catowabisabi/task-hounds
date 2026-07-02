@@ -1,0 +1,102 @@
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  overscroll-behavior: none;
+}
+
+.mobile-connect {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) 20px
+    max(24px, env(safe-area-inset-bottom));
+  color: #f0ede8;
+  background:
+    radial-gradient(circle at 50% 0%, #35230d 0, transparent 45%),
+    #111;
+}
+
+.mobile-connect__card {
+  width: min(100%, 420px);
+}
+
+.mobile-connect__mark {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #111;
+  background: #f59e0b;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.mobile-connect h1 {
+  margin: 22px 0 6px;
+  font-size: 2rem;
+}
+
+.mobile-connect p,
+.mobile-connect small {
+  color: #9ca3af;
+}
+
+.mobile-connect form {
+  display: grid;
+  gap: 10px;
+  margin: 30px 0 18px;
+}
+
+.mobile-connect label {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.mobile-connect input {
+  min-width: 0;
+  padding: 14px 15px;
+  border: 1px solid #343434;
+  border-radius: 12px;
+  color: #f0ede8;
+  background: #1b1b1b;
+  font: inherit;
+}
+
+.mobile-connect button {
+  min-height: 50px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 12px;
+  color: #111;
+  background: #f59e0b;
+  font: inherit;
+  font-weight: 800;
+}
+
+.mobile-connect button:disabled {
+  opacity: 0.55;
+}
+
+.mobile-connect__error {
+  padding: 10px 12px;
+  border: 1px solid #7f1d1d;
+  border-radius: 10px;
+  color: #fca5a5;
+  background: #1c0a0a;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 720px) {
+  button,
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

@@ -1,4 +1,4 @@
-name: CI
+name: Public build
 
 on:
   push:
@@ -9,52 +9,60 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pip install .
+      - run: python -m compileall -q core/task_hounds_api
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install .
-
-      - name: Compile Python modules
-        run: |
-          python -m py_compile \
-            core/api/server.py \
-            core/power_teams/db.py \
-            core/power_teams/agents/base.py \
-            core/power_teams/agents/manager.py \
-            core/power_teams/agents/worker.py \
-            core/power_teams/agents/reviewer.py \
-            core/power_teams/mvp/runner.py
-
-  dashboard:
+  web:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: ui/web/package-lock.json
-
-      - name: Install dashboard dependencies
-        working-directory: ui/web
+      - working-directory: ui/web
         run: npm ci
-
-      - name: Build dashboard
-        working-directory: ui/web
+      - working-directory: ui/web
         run: npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - working-directory: mobile
+        run: npm ci
+      - working-directory: mobile
+        run: npm run build
+
+  public-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject private runtime and database artifacts
+        shell: bash
+        run: |
+          forbidden="$(find . -type f \( \
+            -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' -o \
+            -name '.env' -o -name '*.pem' -o -name '*.key' -o \
+            -name '*.log' \
+          \) -not -path './.git/*' -print)"
+          if [ -n "$forbidden" ]; then
+            printf 'Forbidden public artifacts:\n%s\n' "$forbidden"
+            exit 1
+          fi
+          test ! -d audit_migration
+          test ! -d mcp
+          test ! -d docs/testing
+          test ! -d docs/debug

@@ -46,12 +46,14 @@ wheels/
 *.egg
 MANIFEST
 .pytest_cache/
+.pytest-cache-*/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
 .tox/
 .venv/
+.build-venv/
 venv/
 env/
 ENV/
@@ -99,14 +101,17 @@ reply*.json
 my_reply.json
 last_manager_msg.txt
 docs/debug-logs/
+ui/debug/logs/
 
 # Local agent/tool workspaces
 .playwright-mcp/
+.agents/
 .claude/
 .codex-suggestion/
 .docker-tmp-config/
 .hermes/
 .sisyphus/
+.omo/
 
 # Local test artifacts
 coverage/
@@ -119,10 +124,14 @@ tmp_endpoint_test/
 tmp_pkg_fastapi_test*/
 tmp_pkg_fastapi_test*
 ui/web/test-results/
+ui/web/.tmp-playwright/
 core/runtime/oc-test-config*/
 core/runtime/opencode_single_dir_test/
 docs/testing/test-chat/
 docs/testing/opencode-test/
+test-runtime-*/
+test-tmp-*/
+.test-tmp-*/
 
 # Docs data dumps
 docs/opencode/

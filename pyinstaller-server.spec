@@ -1,49 +1,35 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import sys
 import os
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 # Resolve paths relative to this spec file's directory (project root)
 ROOT_DIR = os.path.abspath(globals().get('SPECPATH') or os.path.dirname(__file__))
 
 block_cipher = None
 
+collected_datas = []
+collected_binaries = []
+collected_hiddenimports = []
+for package in ('langgraph', 'pydantic', 'fastapi', 'uvicorn'):
+    datas, binaries, hiddenimports = collect_all(package)
+    collected_datas += datas
+    collected_binaries += binaries
+    collected_hiddenimports += hiddenimports
+
 a = Analysis(
-    [os.path.join(ROOT_DIR, 'core', 'api', 'fastapi_server.py')],
-    pathex=[ROOT_DIR],
-    binaries=[],
+    [os.path.join(ROOT_DIR, 'core', 'task_hounds_api', 'desktop_runtime.py')],
+    pathex=[ROOT_DIR, os.path.join(ROOT_DIR, 'core')],
+    binaries=collected_binaries,
     datas=[
-        (os.path.join(ROOT_DIR, 'core'), 'core'),
-        (os.path.join(ROOT_DIR, 'core', 'db', 'schema.sql'), 'core/db'),
-        (os.path.join(ROOT_DIR, 'core', 'db', 'migrations'), 'core/db/migrations'),
+        (os.path.join(ROOT_DIR, 'core', 'db'), 'core/db'),
         (os.path.join(ROOT_DIR, 'ui', 'web', 'dist'), 'ui/web/dist'),
-    ] + (
+    ] + collected_datas + (
         [(os.path.join(ROOT_DIR, '.env.example'), '.')]
         if os.path.exists(os.path.join(ROOT_DIR, '.env.example'))
         else []
     ),
-    hiddenimports=[
-        'core',
-        'core.api',
-        'core.api.fastapi_server',
-        'core.api.server',
-        'core.db',
-        'core.db.migrations',
-        'core.power_teams',
-        'core.power_teams.runtime',
-        'core.power_teams.runtime.opencode_lifecycle',
-        'core.power_teams.runtime.opencode_supervisor',
-        'core.power_teams.runtime.backend_registry',
-        'core.power_teams.runtime.backends',
-        'core.power_teams.runtime.backends.opencode',
-        'core.power_teams.runtime.backends.hermes',
-        'core.power_teams.runtime.backends.openclaw',
-        'core.power_teams.runtime.backends.base',
-        'core.power_teams.runtime.result_schema',
-        'core.power_teams.agents',
-        'core.power_teams.db',
-        'core.power_teams.cli',
-    ],
+    hiddenimports=collect_submodules('task_hounds_api') + collected_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -59,19 +45,25 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
-    name='task-hounds-fastapi-server',
+    name='task-hounds-runtime',
+    exclude_binaries=True,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    a.zipfiles,
+    name='task-hounds-runtime',
 )

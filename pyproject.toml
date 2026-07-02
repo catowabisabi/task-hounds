@@ -7,6 +7,7 @@ license = {text = "MIT"}
 requires-python = ">=3.11"
 dependencies = [
   "requests>=2.31",
+  "langgraph>=0.2.60",
 ]
 keywords = ["ai", "agents", "orchestration", "automation", "opencode", "developer-tools"]
 classifiers = [
@@ -21,13 +22,13 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://task-hounds.com"
-Documentation = "https://github.com/catowabisabi/task-hounds#readme"
-Repository = "https://github.com/catowabisabi/task-hounds.git"
-Issues = "https://github.com/catowabisabi/task-hounds/issues"
+Documentation = "https://github.com/catowabisabi/task-hounds-public#readme"
+Repository = "https://github.com/catowabisabi/task-hounds-public.git"
+Issues = "https://github.com/catowabisabi/task-hounds-public/issues"
 
 [tool.setuptools.packages.find]
 where = ["core"]
 
 [project.scripts]
-task-hounds-mvp = "power_teams.mvp.runner:main"
-task-hounds = "power_teams.cli:main"
+task-hounds = "task_hounds_api.api.main:create_app"
+task-hounds-serve = "task_hounds_api.__main__:main"
