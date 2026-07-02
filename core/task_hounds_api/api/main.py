@@ -65,8 +65,26 @@ def _ensure_default_project() -> None:
     Ensures the dashboard renders something useful on first load.
     The user can rename, delete, or create more projects via the UI.
     """
-    if db_project.list_sessions():
+    sessions = db_project.list_sessions()
+    if sessions:
+        default_session = next(
+            (session for session in sessions if session.get("id") == "ps_default"),
+            None,
+        )
+        if default_session is not None:
+            stored_path = str(default_session.get("workspace_path") or "").strip()
+            if stored_path:
+                default_path = Path(stored_path)
+                default_path.mkdir(parents=True, exist_ok=True)
+            else:
+                default_path = _default_project_path()
+                db_project.update_session(
+                    "ps_default",
+                    workspace_path=str(default_path),
+                )
+            db_project.refresh_path_missing()
         return
+
     default_path = _default_project_path()
     sid = "ps_default"
     db_project.create_session(
