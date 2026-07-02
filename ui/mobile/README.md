@@ -20,7 +20,7 @@ database. Enter the private URL reported by `tailscale serve status`:
 ## Build
 
 ```powershell
-cd mobile
+cd ui/mobile
 npm install
 npm run android:sync
 npm run android:open

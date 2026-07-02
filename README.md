@@ -433,7 +433,7 @@ The EXE package includes source resources needed by the app and the built web UI
 
 ## Android Client
 
-The experimental Android client lives in `mobile/`. It is an independent
+The experimental Android client lives in `ui/mobile/`. It is an independent
 React and Capacitor project, so mobile UI changes do not affect the desktop
 WebUI or backend.
 
@@ -465,7 +465,7 @@ https://<device-name>.<tailnet-name>.ts.net
 Build and open the Android project:
 
 ```powershell
-cd mobile
+cd ui/mobile
 npm install
 npm run android:sync
 npm run android:open
@@ -502,7 +502,7 @@ task-hounds/
   ui/
     web/                  # React + Vite dashboard
     desktop/              # Electron desktop wrapper
-  mobile/                 # Independent React + Capacitor Android client
+    mobile/               # React + Capacitor Android client
   docs/
     guides/               # User guides
     architecture/          # Design notes
@@ -542,7 +542,7 @@ npm run build
 Mobile web build and Android sync:
 
 ```powershell
-cd mobile
+cd ui/mobile
 npm run build
 npm run android:sync
 ```

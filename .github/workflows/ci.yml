@@ -40,10 +40,10 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: mobile/package-lock.json
-      - working-directory: mobile
+          cache-dependency-path: ui/mobile/package-lock.json
+      - working-directory: ui/mobile
         run: npm ci
-      - working-directory: mobile
+      - working-directory: ui/mobile
         run: npm run build
 
   public-safety:
