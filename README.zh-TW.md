@@ -63,6 +63,185 @@ flowchart LR
     R --> D
 ```
 
+## 完整工作流程
+
+### 人類輸入規則
+
+| 輸入 | 意義 | 生命週期 |
+| --- | --- | --- |
+| `HUMAN_DIRECTIVE` | 專案或對話長期不變的核心任務。 | 同一專案建立新對話時會自動沿用。代理流程不會自行修改或刪除，只有人類可以變更。 |
+| `HUMAN_NEW_THOUGHT_AND_SUGGESTION` | 方向、問題、產品品味、疑慮或想法。 | Manager 消化內容，視需要轉為待辦事項，再標記為已處理並保留歷史。 |
+| `HUMAN_SUGGESTED_NEW_TASK_OR_ITEM` | 明確的功能或工作項目。 | Manager 在適當時加入計畫與待辦系統，再標記為已處理並保留歷史。 |
+
+### 完整循環
+
+```text
+HUMAN_DIRECTIVE（長期人類指令）
+MANAGER_MESSAGE 歷史
+HUMAN_NEW_THOUGHT_AND_SUGGESTION
+HUMAN_SUGGESTED_NEW_TASK_OR_ITEM
+WORKER_REPORT
+REVIEWER_FEEDBACK
+TODO 狀態
+HANDOFF（只在 Manager 循環開始時讀取）
+─────────────────────────────────
+Manager INPUT_DIGEST（理解所有輸入）
+Manager DECISION（決定下一步）
+Manager MESSAGE
+PLAN
+TODO_LIST
+TODO_UPDATE_JSON
+SUGGESTION_CONTENT
+SUGGESTION_VERIFICATION
+HANDOFF_UPDATE JSON
+─────────────────────────────────
+Worker 執行一項工作
+Worker 寫入 WORKER_REPORT
+Worker 記錄修改檔案、測試結果與已知問題
+─────────────────────────────────
+Reviewer 檢查品質、錯誤、UI/UX、潛在問題、
+卡住狀態、混亂輸入，以及安全與資安風險
+─────────────────────────────────
+Reviewer 意見回到 Manager
+Manager 決定修正、繼續、停止或建立下一項工作
+```
+
+### 角色與資料流
+
+```mermaid
+flowchart TD
+    H["Human<br/>人類"]
+
+    HD["HUMAN_DIRECTIVE<br/>穩定的專案／對話任務<br/>除非人類修改，否則會沿用"]
+    HT["HUMAN_NEW_THOUGHT_AND_SUGGESTION<br/>方向、問題、想法、品味、疑慮"]
+    HI["HUMAN_SUGGESTED_NEW_TASK_OR_ITEM<br/>明確功能或待辦候選項目"]
+
+    M0["Manager 循環開始"]
+    HO["HANDOFF<br/>Manager 記憶<br/>循環開始時讀取一次"]
+    DB["資料庫狀態<br/>計畫、待辦 JSON、Manager 訊息、<br/>Worker 報告、Reviewer 意見"]
+
+    DIGEST["INPUT_DIGEST<br/>理解人類、Worker、Reviewer、待辦與指令"]
+    DECIDE["DECISION<br/>上一步成功／失敗／受阻？<br/>下一步：修正、繼續、停止或建立任務"]
+
+    MM["MANAGER_MESSAGE<br/>Manager、Worker、Reviewer 共用指引"]
+    PLAN["PLAN<br/>策略"]
+    TL["TODO_LIST<br/>人類可讀工作清單"]
+    TJ["TODO_UPDATE_JSON<br/>機器可讀的待辦唯一真實來源"]
+
+    SC["SUGGESTION_CONTENT<br/>Manager 消化與工作追蹤"]
+    SV["SUGGESTION_VERIFICATION<br/>驗收條件"]
+    HU["HANDOFF_UPDATE JSON<br/>更新 Manager 記憶"]
+
+    W["Worker<br/>執行一項工作"]
+    WR["WORKER_REPORT"]
+    FC["FILES_CHANGED"]
+    TR["TEST_RESULT"]
+    KI["KNOWN_ISSUES"]
+
+    R["Reviewer<br/>品質、錯誤、UI/UX、風險審查"]
+    RF["REVIEWER_FEEDBACK<br/>品質、錯誤、UI/UX、風險、下一步"]
+
+    H --> HD
+    H --> HT
+    H --> HI
+
+    HD --> M0
+    HT --> M0
+    HI --> M0
+    HO --> M0
+    DB --> M0
+
+    M0 --> DIGEST
+    DIGEST --> DECIDE
+
+    DECIDE --> MM
+    DECIDE --> PLAN
+    PLAN --> TL
+    TL --> TJ
+
+    TJ -->|"有效 JSON"| SC
+    TJ -.->|"遺失或無效：發布工作前修復"| M0
+
+    SC --> SV
+    DECIDE --> HU
+    HU --> HO
+
+    HD --> W
+    MM --> W
+    TL --> W
+    SC --> W
+    SV --> W
+
+    W --> WR
+    W --> FC
+    W --> TR
+    W --> KI
+
+    HD --> R
+    MM --> R
+    WR --> R
+    FC --> R
+    TR --> R
+    KI --> R
+    SV --> R
+
+    R --> RF
+    RF --> M0
+```
+
+### 時序圖
+
+```mermaid
+sequenceDiagram
+    participant Human as 人類
+    participant DB as 資料庫
+    participant Manager
+    participant Handoff
+    participant Worker
+    participant Reviewer
+
+    Human->>DB: HUMAN_DIRECTIVE<br/>穩定任務，僅由人類修改
+    Human->>DB: HUMAN_NEW_THOUGHT_AND_SUGGESTION
+    Human->>DB: HUMAN_SUGGESTED_NEW_TASK_OR_ITEM
+
+    Handoff->>Manager: Manager 循環開始時讀取一次
+    DB->>Manager: 指令、Manager 訊息、待處理人類輸入
+    DB->>Manager: 目前計畫／待辦、Worker 報告、Reviewer 意見
+
+    Manager->>Manager: INPUT_DIGEST
+    Manager->>Manager: DECISION
+    Manager->>DB: MANAGER_MESSAGE
+    Manager->>DB: PLAN
+    Manager->>DB: TODO_LIST
+    Manager->>DB: TODO_UPDATE_JSON
+
+    alt TODO_UPDATE_JSON 有效
+        Manager->>DB: 儲存 SUGGESTION_CONTENT 與 SUGGESTION_VERIFICATION
+        Manager->>Handoff: HANDOFF_UPDATE JSON
+        DB->>Worker: 指令 + Manager 訊息 + 待辦 + 工作脈絡
+        Worker->>DB: WORKER_REPORT
+        Worker->>DB: FILES_CHANGED
+        Worker->>DB: TEST_RESULT
+        Worker->>DB: KNOWN_ISSUES
+        DB->>Reviewer: 指令 + Manager 訊息 + Worker 輸出 + 驗收條件
+        Reviewer->>DB: REVIEWER_FEEDBACK / REVIEWER_SUGGESTION
+        DB->>Manager: Reviewer 意見回到下一次 Manager 循環
+    else TODO_UPDATE_JSON 遺失或無效
+        Manager->>DB: 儲存拒絕／錯誤訊息
+        Manager->>Manager: 發布工作前修復 JSON
+    end
+```
+
+### 不可破壞的規則
+
+- `HUMAN_DIRECTIVE` 是穩定的專案或對話目的；代理流程不會自行改寫或刪除。
+- `MANAGER_MESSAGE` 是 Manager、Worker 與 Reviewer 共用的工作指引。
+- Worker 會收到指令、Manager 訊息、待辦清單與目前工作脈絡，不會收到 handoff。
+- Reviewer 不會直接指派工作；結構化意見會回到 Manager。
+- `SUGGESTION_CONTENT` 與 `SUGGESTION_VERIFICATION` 用於 Manager 消化資訊及追蹤工作。
+- `TODO_UPDATE_JSON` 是機器可讀的待辦唯一真實來源；若遺失或格式錯誤，必須先修復才能發布工作。
+- Handoff 是 Manager 的記憶，在每次 Manager 循環開始時讀取，並以 JSON 更新。
+
 ## 為什麼選擇 Task Hounds？
 
 - **本機優先**：工作空間、資料庫、執行狀態與紀錄都保留在你的電腦。
