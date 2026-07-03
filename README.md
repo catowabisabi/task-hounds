@@ -415,7 +415,7 @@ The Docker image does not include local runtime data, SQLite databases, logs, Op
 
 ## Windows EXE
 
-The desktop app is built with Electron. The portable executable version is `1.0.0`.
+The desktop app is built with Electron. The portable executable version is `1.1.0`.
 
 Build it on Windows:
 

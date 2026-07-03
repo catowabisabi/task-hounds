@@ -1,6 +1,6 @@
 [project]
 name = "task-hounds"
-version = "1.0.0"
+version = "1.1.0"
 description = "Local multi-agent development workspace powered by OpenCode"
 readme = "README.md"
 license = {text = "MIT"}
