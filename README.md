@@ -1,346 +1,113 @@
 <p align="center">
-  <img src="docs/image/Task%20Hounds%20Logo.png" alt="Task Hounds Logo" width="170" />
-</p>
-
-<h1 align="center">Task Hounds - Work like a dog</h1>
-
-<p align="center">
-  <strong>A local multi-agent development workspace powered by OpenCode.</strong><br/>
-  Give it a Human Directive. Watch Manager, Worker, Reviewer, and Chat agents move the project forward.
+  <a href="README.md"><strong>English</strong></a>
+  &nbsp;·&nbsp;
+  <a href="README.zh-TW.md">繁體中文</a>
 </p>
 
 <p align="center">
-  <a href="https://task-hounds.com">Website</a> ?
-  <a href="https://github.com/catowabisabi/task-hounds-public">GitHub</a> ?
-  <a href="https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s">Demo Video</a>
+  <img src="docs/image/Task%20Hounds%20Logo.png" alt="Task Hounds logo" width="160">
+</p>
+
+<h1 align="center">Task Hounds</h1>
+
+<p align="center">
+  <strong>Work like a dog. Ship like a pack.</strong><br>
+  A local, inspectable multi-agent development workspace powered by OpenCode.
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" /></a>
-  <img src="https://img.shields.io/badge/Python-3.11+-yellow.svg" alt="Python 3.11+" />
-  <img src="https://img.shields.io/badge/React-19-61dafb.svg" alt="React 19" />
-  <img src="https://img.shields.io/badge/Electron-Desktop_App-47848f.svg" alt="Electron Desktop App" />
-  <img src="https://img.shields.io/badge/Docker-Ready-2496ed.svg" alt="Docker Ready" />
-  <img src="https://img.shields.io/badge/OpenCode-Powered-111827.svg" alt="OpenCode Powered" />
+  <a href="https://task-hounds.com">Website</a>
+  · <a href="https://github.com/catowabisabi/task-hounds">GitHub</a>
+  · <a href="https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s">Demo</a>
+  · <a href="https://github.com/catowabisabi/task-hounds/issues">Issues</a>
 </p>
 
 <p align="center">
-  <img src="docs/image/banner2.png" alt="Task Hounds Banner" width="92%" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-2563eb.svg" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Python-3.11+-f5c542.svg" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/React-19-61dafb.svg" alt="React 19">
+  <img src="https://img.shields.io/badge/Desktop-Electron-47848f.svg" alt="Electron">
+  <img src="https://img.shields.io/badge/OpenCode-Powered-111827.svg" alt="Powered by OpenCode">
 </p>
 
-Task Hounds is built for people who want a visible, controllable agent loop instead of a black-box coding assistant. State is stored in SQLite, agent sessions are tracked per project, and the dashboard shows what the agents are doing in real time.
+<p align="center">
+  <img src="docs/image/banner2.png" alt="Task Hounds — multi-agent development workspace" width="92%">
+</p>
 
-## Highlights
+## What is Task Hounds?
 
-- Manager / Worker / Reviewer / Chat roles for autonomous development loops
-- OpenCode-backed execution with reusable role sessions
-- SQLite-backed project sessions, directives, todos, reports, and agent state
-- React dashboard for live streams, settings, suggestions, todos, and chat
-- Electron desktop build for Windows portable `.exe`
-- Experimental Android client for Tailscale-connected mobile access
-- Docker build for server-style deployment
-- MIT licensed
+Task Hounds turns one human goal into a visible development loop. Give the pack a **Human Directive**; the Manager plans, the Worker implements, and the Reviewer checks the result before the next task begins.
 
-## Task Hounds Workflow
+Unlike a black-box coding assistant, Task Hounds keeps the work inspectable. Directives, plans, todos, reports, agent state, and reusable OpenCode sessions are stored locally, while the dashboard shows what every agent is doing in real time.
 
-Task Hounds is built around a dog-pack style workflow: the human gives the pack a durable mission, the Manager keeps direction, the Worker carries one task, and the Reviewer sniffs for bugs, UX issues, dead ends, and safety risks before the next step.
+It is designed for developers who want agent autonomy **without giving up control or context**.
 
-<section>
-  <h3>Core roles</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Role</th>
-        <th>Purpose</th>
-        <th>Primary inputs</th>
-        <th>Primary outputs</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Human</strong></td>
-        <td>Set the project mission and drop ideas without needing to stay in the loop.</td>
-        <td>Project intent, product direction, feature ideas, corrections, questions.</td>
-        <td><code>HUMAN_DIRECTIVE</code>, human thoughts/suggestions, suggested new tasks/items.</td>
-      </tr>
-      <tr>
-        <td><strong>Manager</strong></td>
-        <td>Understand all inputs, decide the next step, maintain the plan, and assign exactly one executable task.</td>
-        <td>Human directive, manager message history, todos, worker report, reviewer feedback, and handoff at loop start.</td>
-        <td><code>MANAGER_MESSAGE</code>, <code>PLAN</code>, <code>TODO_LIST</code>, <code>TODO_UPDATE_JSON</code>, worker task, verification, handoff update.</td>
-      </tr>
-      <tr>
-        <td><strong>Worker</strong></td>
-        <td>Execute one concrete task and report what actually changed.</td>
-        <td>Human directive, manager message, current todo list, and the manager's selected task context.</td>
-        <td><code>WORKER_REPORT</code>, files changed, test result, known issues.</td>
-      </tr>
-      <tr>
-        <td><strong>Reviewer</strong></td>
-        <td>Review the worker's output for QA, bugs, UI/UX problems, edge cases, stuck states, messy input, and safety/security risk.</td>
-        <td>Human directive, manager message, worker report, files changed, test result, known issues.</td>
-        <td>Reviewer feedback and suggested follow-up actions for the Manager to digest.</td>
-      </tr>
-    </tbody>
-  </table>
-</section>
+## The pack
 
-<section>
-  <h3>Human input contract</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Input</th>
-        <th>Meaning</th>
-        <th>Lifecycle</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><code>HUMAN_DIRECTIVE</code></td>
-        <td>The durable project/session mission: for example, "build a Chinese learning app for young people" or "automate weather report generation".</td>
-        <td>Copied into each new session from the previous session in the same project. The workflow never edits or deletes it automatically. Only a human manual edit changes it.</td>
-      </tr>
-      <tr>
-        <td><code>HUMAN_NEW_THOUGHT_AND_SUGGESTION</code></td>
-        <td>Direction, questions, product taste, concerns, or ideas: for example, "is the direction wrong?", "do we need passwords?", "try more colors?".</td>
-        <td>The Manager digests it, may turn part of it into todo items, then marks it processed while keeping history.</td>
-      </tr>
-      <tr>
-        <td><code>HUMAN_SUGGESTED_NEW_TASK_OR_ITEM</code></td>
-        <td>A more explicit feature or work item: for example, "add export to PDF" or "add the dog banner back".</td>
-        <td>The Manager adds it to the plan/todo system when appropriate, then marks the suggestion processed while keeping history.</td>
-      </tr>
-    </tbody>
-  </table>
-</section>
-
-<section>
-  <h3>Loop diagram</h3>
-  <pre><code>HUMAN_DIRECTIVE
- MANAGER_MESSAGE history
- HUMAN_NEW_THOUGHT_AND_SUGGESTION
- HUMAN_SUGGESTED_NEW_TASK_OR_ITEM
- WORKER_REPORT
- REVIEWER_FEEDBACK
- TODO state
- HANDOFF at manager loop start only
--------------------------------
-Manager INPUT_DIGEST
-Manager DECISION
-Manager MESSAGE
-PLAN
-TODO_LIST
-TODO_UPDATE_JSON
-SUGGESTION_CONTENT
-SUGGESTION_VERIFICATION
-HANDOFF_UPDATE JSON
--------------------------------
-Worker executes one task
-Worker writes WORKER_REPORT
-Worker records files changed, test result, known issues
--------------------------------
-Reviewer checks QA, bugs, UI/UX, possible problems,
-stuck states, messy user input, safety and security risk
--------------------------------
-Reviewer feedback returns to Manager
-Manager decides whether to fix, continue, stop, or create the next task</code></pre>
-</section>
-
-### Role And Data Flow
+| Role | Responsibility |
+| --- | --- |
+| **You** | Set the durable project mission, add ideas, and redirect the work at any time. |
+| **Manager** | Understand context, maintain the plan, and assign one concrete task at a time. |
+| **Worker** | Implement the selected task and report files changed, tests, and known issues. |
+| **Reviewer** | Inspect the result for bugs, UX problems, edge cases, and safety risks. |
+| **Chat** | Let you discuss the project and interact with the system directly. |
 
 ```mermaid
-flowchart TD
-    H["Human"]
-
-    HD["HUMAN_DIRECTIVE<br/>Stable project/session mission<br/>Copied from the previous session unless human edits it"]
-    HT["HUMAN_NEW_THOUGHT_AND_SUGGESTION<br/>Direction, question, idea, taste, concern"]
-    HI["HUMAN_SUGGESTED_NEW_TASK_OR_ITEM<br/>Explicit feature or todo candidate"]
-
-    M0["Manager Loop Start"]
-    HO["HANDOFF<br/>Manager memory<br/>Read once at loop start"]
-    DB["DB State<br/>Plan, todo JSON, manager messages,<br/>worker reports, reviewer feedback"]
-
-    DIGEST["INPUT_DIGEST<br/>Understand human, worker, reviewer, todo, directive"]
-    DECIDE["DECISION<br/>Previous step pass/fail/blocked?<br/>Next action: fix, continue, stop, or new task"]
-
-    MM["MANAGER_MESSAGE<br/>Shared guidance for Manager, Worker, Reviewer"]
-    PLAN["PLAN<br/>Strategy"]
-    TL["TODO_LIST<br/>Human-readable work list"]
-    TJ["TODO_UPDATE_JSON<br/>Machine-readable todo source of truth"]
-
-    SC["SUGGESTION_CONTENT<br/>Manager digestion and task tracking"]
-    SV["SUGGESTION_VERIFICATION<br/>Acceptance criteria"]
-    HU["HANDOFF_UPDATE JSON<br/>Update Manager memory"]
-
-    W["Worker<br/>Executes one task"]
-    WR["WORKER_REPORT"]
-    FC["FILES_CHANGED"]
-    TR["TEST_RESULT"]
-    KI["KNOWN_ISSUES"]
-
-    R["Reviewer<br/>QA, bug, UI/UX, risk review"]
-    RF["REVIEWER_FEEDBACK<br/>QA, bugs, UI/UX, risks, next action"]
-
-    H --> HD
-    H --> HT
-    H --> HI
-
-    HD --> M0
-    HT --> M0
-    HI --> M0
-    HO --> M0
-    DB --> M0
-
-    M0 --> DIGEST
-    DIGEST --> DECIDE
-
-    DECIDE --> MM
-    DECIDE --> PLAN
-    PLAN --> TL
-    TL --> TJ
-
-    TJ -->|"valid JSON"| SC
-    TJ -.->|"missing or invalid: repair before release"| M0
-
-    SC --> SV
-    DECIDE --> HU
-    HU --> HO
-
-    HD --> W
-    MM --> W
-    TL --> W
-    SC --> W
-    SV --> W
-
-    W --> WR
-    W --> FC
-    W --> TR
-    W --> KI
-
-    HD --> R
-    MM --> R
-    WR --> R
-    FC --> R
-    TR --> R
-    KI --> R
-    SV --> R
-
-    R --> RF
-    RF --> M0
+flowchart LR
+    H["Human Directive"] --> M["Manager<br>Plan & delegate"]
+    M --> W["Worker<br>Implement"]
+    W --> R["Reviewer<br>Verify"]
+    R --> M
+    M --> D["Live dashboard<br>Todos, reports & state"]
+    W --> D
+    R --> D
 ```
 
-### Time Sequence
+## Why Task Hounds?
 
-```mermaid
-sequenceDiagram
-    participant Human
-    participant DB
-    participant Manager
-    participant Handoff
-    participant Worker
-    participant Reviewer
+- **Local first** — your workspace, database, runtime state, and logs stay on your machine.
+- **Inspectable by design** — follow live thinking, tool activity, todos, reports, and review feedback.
+- **Persistent context** — SQLite-backed project state and reusable role sessions survive across loops.
+- **Clear responsibilities** — planning, implementation, and review are handled by separate agents.
+- **Human steerable** — change direction with durable directives, thoughts, and suggested tasks.
+- **Multiple ways to run** — web dashboard, Windows desktop app, Docker, and an experimental Android client.
+- **Open source** — MIT licensed and ready to adapt.
 
-    Human->>DB: HUMAN_DIRECTIVE<br/>stable mission, human-edited only
-    Human->>DB: HUMAN_NEW_THOUGHT_AND_SUGGESTION
-    Human->>DB: HUMAN_SUGGESTED_NEW_TASK_OR_ITEM
-
-    Handoff->>Manager: Read once at Manager loop start
-    DB->>Manager: Directive, manager messages, pending human inputs
-    DB->>Manager: Current plan/todos, worker report, reviewer feedback
-
-    Manager->>Manager: INPUT_DIGEST
-    Manager->>Manager: DECISION
-    Manager->>DB: MANAGER_MESSAGE
-    Manager->>DB: PLAN
-    Manager->>DB: TODO_LIST
-    Manager->>DB: TODO_UPDATE_JSON
-
-    alt TODO_UPDATE_JSON valid
-        Manager->>DB: Save SUGGESTION_CONTENT and SUGGESTION_VERIFICATION
-        Manager->>Handoff: HANDOFF_UPDATE JSON
-        DB->>Worker: Human directive + manager message + todo list + task context
-        Worker->>DB: WORKER_REPORT
-        Worker->>DB: FILES_CHANGED
-        Worker->>DB: TEST_RESULT
-        Worker->>DB: KNOWN_ISSUES
-        DB->>Reviewer: Directive + manager message + worker output + acceptance criteria
-        Reviewer->>DB: REVIEWER_FEEDBACK / REVIEWER_SUGGESTION
-        DB->>Manager: Reviewer feedback returns to next Manager loop
-    else TODO_UPDATE_JSON missing or invalid
-        Manager->>DB: Save rejection/error message
-        Manager->>Manager: Repair JSON before releasing work
-    end
-```
-
-<section>
-  <h3>Hard rules</h3>
-  <ul>
-    <li><code>HUMAN_DIRECTIVE</code> is stable project/session purpose. The agent loop does not rewrite or delete it.</li>
-    <li><code>MANAGER_MESSAGE</code> is shared guidance. It is sent back into the Manager, and is also available to the Worker and Reviewer.</li>
-    <li>The Worker does not need the handoff. The Worker should receive the directive, manager message, todo list, and current task context.</li>
-    <li>The Reviewer does not assign work directly. Reviewer feedback returns to the Manager like a structured suggestion.</li>
-    <li><code>SUGGESTION_CONTENT</code> and <code>SUGGESTION_VERIFICATION</code> are for Manager digestion and task tracking; the Worker should be guided by the Manager message and todo context.</li>
-    <li><code>TODO_UPDATE_JSON</code> is the machine-readable todo source of truth. If it is missing or invalid, Task Hounds should repair it before releasing work.</li>
-    <li>Handoff is Manager memory. It is read at the start of a Manager loop and updated as JSON, not treated as Worker context.</li>
-  </ul>
-</section>
-
-## Demo
+## See it in action
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=pu-Rt8Ye4EQ&t=174s">
-    <img src="https://img.youtube.com/vi/pu-Rt8Ye4EQ/maxresdefault.jpg" alt="Watch the Task Hounds demo on YouTube" width="82%" />
+    <img src="https://img.youtube.com/vi/pu-Rt8Ye4EQ/maxresdefault.jpg" alt="Watch the Task Hounds demo" width="82%">
   </a>
-  <br/>
-  <em>Click to watch the demo on YouTube.</em>
 </p>
-
-## Dashboard
 
 <p align="center">
-  <img src="docs/image/ui%20(2).png" alt="Task Hounds dashboard" width="86%" />
+  <img src="docs/image/ui%20(2).png" alt="Task Hounds dashboard" width="88%">
 </p>
 
-## Quick Start
+## Quick start
 
-### 1. Install requirements
+### Requirements
 
-You need:
-
-- Python 3.11 or 3.12
+- Windows (recommended for the managed runtime and desktop build)
+- Python 3.11+
 - Node.js 20+
 - npm
-- Git
 
-Clone the public repository:
-
-```powershell
-git clone https://github.com/catowabisabi/task-hounds-public.git
-cd task-hounds-public
-```
-
-For the simplest Windows setup, run the installer. It installs the Python
-package, the pinned OpenCode runtime, and the WebUI dependencies:
+### 1. Clone and install
 
 ```powershell
+git clone https://github.com/catowabisabi/task-hounds.git
+cd task-hounds
+
 .\installation.cmd
-```
-
-#### OpenCode configuration notes
-
-Task Hounds depends on `opencode run --attach <server> --format json` emitting JSON stream events. Do not add the Playwright MCP server to `opencode.json` unless you have verified streaming locally; current OpenCode builds can stop emitting attach JSON events when the Playwright MCP entry is present, which breaks live `think`, `tool`, and `step_end` streams.
-
-When adding extra models, define them in `opencode.json` using the Anthropic-style provider/model format that OpenCode expects. Models that are not declared there are not selectable or usable by Task Hounds, and OpenCode may return `409` or `500` errors when the dashboard tries to run them.
-
-Install Python dependencies:
-
-```powershell
 pip install -r requirements.txt
 pip install .
 ```
 
-Install and build the web UI:
+`installation.cmd` installs the pinned, managed OpenCode runtime used by Task Hounds.
+
+### 2. Build the dashboard
 
 ```powershell
 cd ui/web
@@ -349,210 +116,99 @@ npm run build
 cd ../..
 ```
 
-### 2. Configure environment
-
-Copy the example file:
+### 3. Configure
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-The environment variable prefix is still `POWER_TEAMS_` for compatibility. You do not need to rename existing local settings.
+Task Hounds keeps the legacy `POWER_TEAMS_` environment-variable prefix for compatibility. Review `.env.example` before adding provider keys or exposing the API beyond localhost.
 
-Useful settings:
-
-```env
-POWER_TEAMS_DB=core/db/power_teams.db
-POWER_TEAMS_REUSE_OPENCODE_SESSIONS=true
-POWER_TEAMS_SILENCE_TIMEOUT=480
-POWER_TEAMS_HARD_TIMEOUT=1200
-```
-
-### 3. Run Task Hounds
-
-On Windows, use the safe launcher:
-
-```powershell
-.\start_task_hounds_safe.cmd
-```
-
-It starts the supervised runtime and opens http://localhost:8766.
-
-For a manual development start:
+### 4. Run
 
 ```powershell
 $env:PYTHONPATH = "core"
-python -m task_hounds_api.supervisor --host 127.0.0.1 --port 8766
+python core\api\server.py --port 8765
 ```
 
-### 4. Start work
+Open [http://localhost:8765](http://localhost:8765), create or select a workspace, write a Human Directive, then choose **Start Loop** or **Run Once**.
 
-In the dashboard:
+> Task Hounds will not begin autonomous work without a pending Human Directive.
 
-1. Pick or create a project workspace.
-2. Write a Human Directive.
-3. Press Start Loop or Run Once.
+For more detail, see the [Getting Started guide](docs/guides/getting-started.md).
 
-Task Hounds requires a pending Human Directive before it starts autonomous work. Suggestions and manager messages are context, not permission to run.
+## Other ways to run
 
-## Docker
-
-Build the image:
+### Docker
 
 ```bash
 docker build -t task-hounds .
-```
-
-Run it:
-
-```bash
 docker run --rm -p 8765:8765 -v "$(pwd)/data:/app/data" task-hounds
 ```
 
-Then open http://localhost:8765.
-
-The Docker image does not include local runtime data, SQLite databases, logs, OpenCode config, or desktop build artifacts.
-
-## Windows EXE
-
-The desktop app is built with Electron. The portable executable version is `1.1.0`.
-
-Build it on Windows:
+### Windows desktop app
 
 ```powershell
 .\build_exe.ps1
 ```
 
-Output is written to:
+The portable Electron build is written to `ui/desktop/dist/`.
 
-```text
-ui/desktop/dist/
-```
+### Android client
 
-The EXE package includes source resources needed by the app and the built web UI. It does not package local runtime folders, SQLite databases, logs, or personal OpenCode config.
+The experimental React + Capacitor client is in `ui/mobile/`. It connects to the same backend and shares projects, sessions, todos, chat, and agent state. Private access through [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) is recommended; do not expose the backend directly to the public internet.
 
-## Android Client
-
-The experimental Android client lives in `ui/mobile/`. It is an independent
-React and Capacitor project, so mobile UI changes do not affect the desktop
-WebUI or backend.
-
-The Android client connects to the same Task Hounds backend and therefore uses
-the same projects, sessions, todos, chat, and agent state. The recommended
-connection method is [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve);
-do not expose the Task Hounds backend directly to the public internet.
-
-Requirements:
-
-- Node.js and npm
-- Android Studio and an Android SDK
-- JDK 21
-- Tailscale installed and connected on both devices
-
-On the computer running Task Hounds:
-
-```powershell
-tailscale serve --bg http://127.0.0.1:8766
-tailscale serve status
-```
-
-Enter the resulting private tailnet URL in the Android app:
-
-```text
-https://<device-name>.<tailnet-name>.ts.net
-```
-
-Build and open the Android project:
-
-```powershell
-cd ui/mobile
-npm install
-npm run android:sync
-npm run android:open
-```
-
-The selected server address is stored only in the Android WebView's local
-IndexedDB database.
+See [ui/mobile/README.md](ui/mobile/README.md) for setup instructions.
 
 ## Architecture
 
-Task Hounds uses SQLite as the runtime source of truth.
-
-Important tables include:
-
-- `project_sessions` for workspaces and per-role OpenCode session IDs
-- `agent_registry` for agent state, model, role binding, and last errors
-- `user_directives` for human-origin work directives
-- `session_todos` for visible project work items
-- `worker_reports` and `manager_messages` for agent reports and feedback
-- `suggestion_queue` for manager-proposed next steps
-
-Compatibility text files under `core/runtime` are treated as runtime mirrors and fallbacks. New control flow should prefer the DB.
-
-See [System Architecture](docs/architecture/system-architecture.md) for more detail.
-
-## Project Structure
+SQLite is the runtime source of truth for project sessions, directives, todos, reports, suggestions, and agent state. Compatibility files under `core/runtime/` are local runtime mirrors and fallbacks.
 
 ```text
 task-hounds/
-  core/
-    db/                  # SQLite schema and migrations
-    task_hounds_api/      # API, workflows, agents, runtime and DB access
-    runtime/              # Local runtime directory; contents are ignored
-  ui/
-    web/                  # React + Vite dashboard
-    desktop/              # Electron desktop wrapper
-    mobile/               # React + Capacitor Android client
-  docs/
-    guides/               # User guides
-    architecture/          # Design notes
-    image/                # Public README and release images
-  Dockerfile
-  .env.example
+├── core/
+│   ├── api/                 # HTTP API and dashboard server
+│   ├── db/                  # SQLite schema and migrations
+│   ├── power_teams/         # Legacy Python package
+│   └── task_hounds_api/     # Current backend and agent flows
+├── ui/
+│   ├── web/                 # React + Vite dashboard
+│   ├── desktop/             # Electron desktop wrapper
+│   └── mobile/              # React + Capacitor Android client
+├── docs/                    # Guides, architecture, tests, and images
+├── Dockerfile
+└── .env.example
 ```
 
-## What Is Not Committed
+Runtime data, SQLite databases, logs, local `.env` files, personal OpenCode configuration, and build output are intentionally excluded from the repository.
 
-These are intentionally excluded from the public repo:
+## Development
 
-- Runtime folders and logs
-- SQLite database files
-- OpenCode config/home folders
-- Local `.env` files
-- Electron and frontend build output
-- Internal debug logs
-- Local test-chat and OpenCode experiment folders
-- `.hermes` workspace files
-
-## Development Checks
-
-Backend syntax check:
+Backend tests:
 
 ```powershell
-python -m compileall -q core/task_hounds_api
+pytest
 ```
 
-Frontend build:
+Web dashboard:
 
 ```powershell
 cd ui/web
 npm run build
 ```
 
-Mobile web build and Android sync:
+Contributions, bug reports, and ideas are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before submitting changes or reporting a vulnerability.
 
-```powershell
-cd ui/mobile
-npm run build
-npm run android:sync
-```
+## Support the project
 
-## Contributing
+If Task Hounds saves you time—or you simply like the idea of a tiny AI dog pack building software—consider buying me a coffee. It helps fund development, testing, and the occasional real coffee behind the virtual hounds.
 
-Issues and pull requests are welcome at https://github.com/catowabisabi/task-hounds-public.
-
-Please keep runtime artifacts, database files, local OpenCode config, logs, and secrets out of commits.
+<p align="center">
+  <a href="https://buymeacoffee.com/catowabisabi?new=1">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" width="210">
+  </a>
+</p>
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Task Hounds is released under the [MIT License](LICENSE).
