@@ -22,13 +22,16 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://task-hounds.com"
-Documentation = "https://github.com/catowabisabi/task-hounds-public#readme"
-Repository = "https://github.com/catowabisabi/task-hounds-public.git"
-Issues = "https://github.com/catowabisabi/task-hounds-public/issues"
+Documentation = "https://github.com/catowabisabi/task-hounds#readme"
+Repository = "https://github.com/catowabisabi/task-hounds.git"
+Issues = "https://github.com/catowabisabi/task-hounds/issues"
 
 [tool.setuptools.packages.find]
 where = ["core"]
 
+[tool.pytest.ini_options]
+testpaths = ["docs/testing/tests"]
+
 [project.scripts]
-task-hounds = "task_hounds_api.api.main:create_app"
+task-hounds = "task_hounds_api.__main__:main"
 task-hounds-serve = "task_hounds_api.__main__:main"

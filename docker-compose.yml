@@ -1,0 +1,10 @@
+services:
+  task-hounds:
+    build: .
+    image: task-hounds:latest
+    container_name: task-hounds
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

@@ -12,7 +12,6 @@ from __future__ import annotations
 import logging
 import json
 import os
-import string
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -39,21 +38,25 @@ logger = logging.getLogger(__name__)
 def _default_project_path() -> Path:
     """Return the platform-appropriate default project folder.
 
-    Windows: C:\\task-hounds-projects\\default-project (or first available drive)
-    Linux/macOS: ~/task-hounds-projects/default-project
+    Default (all platforms): ~/task-hounds-projects/default-project
+
+    Backward compatibility: existing Windows installs that already have the
+    legacy drive-root folder (e.g. C:\\task-hounds-projects) keep using it,
+    so upgrading never relocates a user's projects.
+
+    Can be overridden with the TASK_HOUNDS_PROJECTS_DIR environment variable.
 
     Creates the full directory path if missing.
     """
-    if os.name == "nt":
-        candidate = Path("C:/task-hounds-projects/default-project")
-        if not candidate.parent.parent.exists():
-            for letter in string.ascii_uppercase:
-                drive = Path(f"{letter}:/")
-                if drive.exists():
-                    candidate = drive / "task-hounds-projects" / "default-project"
-                    break
+    override = os.environ.get("TASK_HOUNDS_PROJECTS_DIR", "").strip()
+    if override:
+        candidate = Path(override).expanduser() / "default-project"
     else:
         candidate = Path.home() / "task-hounds-projects" / "default-project"
+        if os.name == "nt":
+            legacy = Path("C:/task-hounds-projects")
+            if legacy.is_dir():
+                candidate = legacy / "default-project"
 
     candidate.mkdir(parents=True, exist_ok=True)
     return candidate
@@ -489,13 +492,74 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Task Hounds API", version="2.0", lifespan=lifespan)
 
+    # ── Security: CORS allowlist + host guard + optional API key ─────────
+    #
+    # This API can drive agents that edit files and run tools, so
+    # "localhost-only" is not enough: a malicious web page could reach
+    # 127.0.0.1 via the browser (CSRF) or via DNS rebinding. Defense:
+    #   1. CORS is a localhost allowlist (extend: TASK_HOUNDS_CORS_ORIGINS)
+    #   2. Requests with a non-allowlisted Origin or Host are rejected
+    #      (extend hosts: TASK_HOUNDS_ALLOWED_HOSTS, e.g. a Tailscale name)
+    #   3. If API_SECRET_KEY is set, every /api request must carry a
+    #      matching X-API-Key header (for headless / networked use).
+    _cors_origins = {
+        "http://localhost:8765", "http://127.0.0.1:8765",
+        "http://localhost:8766", "http://127.0.0.1:8766",
+        "http://localhost:5173", "http://127.0.0.1:5173",
+        # Capacitor (Android/iOS mobile client) webview origins
+        "capacitor://localhost", "http://localhost", "https://localhost",
+    }
+    _cors_origins.update(
+        o.strip()
+        for o in os.environ.get("TASK_HOUNDS_CORS_ORIGINS", "").split(",")
+        if o.strip()
+    )
+    # "testserver" is what starlette's TestClient sends; it is not a
+    # resolvable public name, so allowing it does not widen the surface.
+    _allowed_hosts = {"localhost", "127.0.0.1", "[::1]", "::1", "testserver"}
+    _allowed_hosts.update(
+        h.strip().lower()
+        for h in os.environ.get("TASK_HOUNDS_ALLOWED_HOSTS", "").split(",")
+        if h.strip()
+    )
+    _api_key = os.environ.get("API_SECRET_KEY", "").strip()
+    if _api_key in ("", "your_api_secret_key_here"):
+        _api_key = ""
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=sorted(_cors_origins),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def request_guard(request: Request, call_next):
+        from starlette.responses import JSONResponse
+
+        host = (request.headers.get("host") or "").split(":", 1)[0].lower()
+        if host and host not in _allowed_hosts:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": f"host {host!r} not allowed; "
+                    "add it to TASK_HOUNDS_ALLOWED_HOSTS if intentional"
+                },
+            )
+        origin = request.headers.get("origin")
+        if origin and origin not in _cors_origins:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": "cross-origin request rejected; "
+                    "add the origin to TASK_HOUNDS_CORS_ORIGINS if intentional"
+                },
+            )
+        if _api_key and request.url.path.startswith("/api/") and request.url.path != "/api/health":
+            if request.headers.get("x-api-key") != _api_key:
+                return JSONResponse(status_code=401, content={"detail": "invalid or missing X-API-Key"})
+        return await call_next(request)
 
     @app.middleware("http")
     async def prevent_stale_ui_shell(request: Request, call_next):

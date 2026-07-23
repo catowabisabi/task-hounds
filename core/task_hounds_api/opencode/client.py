@@ -455,7 +455,12 @@ def _kill_proc(proc: subprocess.Popen) -> None:
     kill_process_tree(proc)
 
 
-def _process_line(raw: str, text_parts: list[str], on_chunk) -> None:
+def _process_line(
+    raw: str,
+    text_parts: list[str],
+    on_chunk,
+    reasoning_parts: list[str] | None = None,
+) -> None:
     raw = raw.rstrip("\n")
     if not raw:
         return
@@ -476,6 +481,8 @@ def _process_line(raw: str, text_parts: list[str], on_chunk) -> None:
     elif etype == "reasoning":
         txt = (ev.get("part") or {}).get("text", "").strip()
         if txt:
+            if reasoning_parts is not None:
+                reasoning_parts.append(txt)
             _safe_print(f"[think] {txt[:200]}")
     elif etype == "tool_use":
         part = ev.get("part") or {}
@@ -517,6 +524,7 @@ def _run_cmd(
     elapsed time and kill the subprocess on timeout.
     """
     text_parts: list[str] = []
+    reasoning_parts: list[str] = []
     error_parts: list[str] = []
     start = time.monotonic()
     last_event_at = start
@@ -648,7 +656,7 @@ def _run_cmd(
                 "agent": agent,
                 "line": line.rstrip("\n"),
             })
-            _process_line(line, text_parts, on_chunk)
+            _process_line(line, text_parts, on_chunk, reasoning_parts)
             try:
                 ev = json.loads(line)
             except json.JSONDecodeError:
@@ -694,7 +702,21 @@ def _run_cmd(
             "stderr": stderr_out,
             "text_chars": sum(len(part) for part in text_parts),
         })
-        return "\n".join(text_parts).strip()
+        assembled = "\n".join(text_parts).strip()
+        if not assembled and reasoning_parts:
+            # Interleaved-thinking models (MiniMax M2.x, Kimi K3, Qwen with
+            # thinking enabled) sometimes put their entire final answer in a
+            # reasoning part and stop on tool-calls without ever emitting a
+            # plain text part. Fall back to the last reasoning part so the
+            # caller (e.g. the Chat agent) does not surface an empty reply.
+            assembled = reasoning_parts[-1].strip()
+            _emit_log("opencode.emit.reasoning_fallback", {
+                "run_id": run_id,
+                "agent": agent,
+                "reasoning_parts": len(reasoning_parts),
+                "fallback_chars": len(assembled),
+            })
+        return assembled
     finally:
         running[0] = False
         registry.unregister_run(run_id)

@@ -119,6 +119,7 @@ export function RuntimePanel() {
   const [credentialPopupOpen, setCredentialPopupOpen] = useState(false);
   const [credentialPopupSeen, setCredentialPopupSeen] = useState(false);
   const [minimaxKey, setMinimaxKey] = useState("");
+  const [kimiKey, setKimiKey] = useState("");
   const [bailianKey, setBailianKey] = useState("");
   const [credentialBusy, setCredentialBusy] = useState(false);
 
@@ -308,9 +309,11 @@ export function RuntimePanel() {
     try {
       await apiPost("/api/runtime/credentials", {
         minimax_api_key: minimaxKey.trim() || undefined,
+        kimi_api_key: kimiKey.trim() || undefined,
         bailian_api_key: bailianKey.trim() || undefined,
       });
       setMinimaxKey("");
+      setKimiKey("");
       setBailianKey("");
       setCredentialPopupOpen(false);
       flash("API key saved. Runtime config refreshed.", "success");
@@ -415,6 +418,18 @@ export function RuntimePanel() {
                 />
               </label>
               <label className="block">
+                <span className="block text-[10px] mb-1 uppercase tracking-wider" style={{ color: "var(--text-dim)" }}>Kimi API key</span>
+                <input
+                  data-testid="runtime-kimi-key-input"
+                  type="password"
+                  value={kimiKey}
+                  onChange={e => setKimiKey(e.target.value)}
+                  placeholder="Paste OPENCODE_API_KEY_KIMI"
+                  className="w-full rounded px-2 py-1.5 text-[12px] outline-none"
+                  style={{ background: "var(--bg-base)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+                />
+              </label>
+              <label className="block">
                 <span className="block text-[10px] mb-1 uppercase tracking-wider" style={{ color: "var(--text-dim)" }}>Bailian API key</span>
                 <input
                   data-testid="runtime-bailian-key-input"
@@ -431,7 +446,7 @@ export function RuntimePanel() {
               <button
                 data-testid="runtime-credential-save"
                 onClick={handleSaveCredentials}
-                disabled={credentialBusy || (!minimaxKey.trim() && !bailianKey.trim())}
+                disabled={credentialBusy || (!minimaxKey.trim() && !kimiKey.trim() && !bailianKey.trim())}
                 className="px-3 py-1.5 rounded text-[11px] font-semibold disabled:opacity-40"
                 style={{ background: "var(--amber-bg)", color: "var(--amber)", border: "1px solid var(--amber-dim)" }}
               >
