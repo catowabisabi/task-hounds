@@ -23,6 +23,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/catowabisabi/task-hounds/actions/workflows/ci.yml"><img src="https://github.com/catowabisabi/task-hounds/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-2563eb.svg" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/Python-3.11+-f5c542.svg" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/React-19-61dafb.svg" alt="React 19">
@@ -73,174 +74,13 @@ flowchart LR
 | `HUMAN_NEW_THOUGHT_AND_SUGGESTION` | Direction, questions, product taste, concerns, or ideas. | The Manager digests it, may turn it into todo items, then marks it processed while preserving its history. |
 | `HUMAN_SUGGESTED_NEW_TASK_OR_ITEM` | An explicit feature or work item. | The Manager adds it to the plan and todo system when appropriate, then marks it processed while preserving its history. |
 
-### Complete loop
+The loop runs on an explicit message contract: the Manager digests input, decides,
+plans, and releases exactly one task; the Worker implements and files a structured
+report; the Reviewer verifies and routes feedback back to the Manager. Machine-readable
+todo JSON is validated (and repaired) before any work is released.
 
-```text
-HUMAN_DIRECTIVE
-MANAGER_MESSAGE history
-HUMAN_NEW_THOUGHT_AND_SUGGESTION
-HUMAN_SUGGESTED_NEW_TASK_OR_ITEM
-WORKER_REPORT
-REVIEWER_FEEDBACK
-TODO state
-HANDOFF at Manager loop start only
-─────────────────────────────────
-Manager INPUT_DIGEST
-Manager DECISION
-Manager MESSAGE
-PLAN
-TODO_LIST
-TODO_UPDATE_JSON
-SUGGESTION_CONTENT
-SUGGESTION_VERIFICATION
-HANDOFF_UPDATE JSON
-─────────────────────────────────
-Worker executes one task
-Worker writes WORKER_REPORT
-Worker records files changed, test result, and known issues
-─────────────────────────────────
-Reviewer checks QA, bugs, UI/UX, possible problems,
-stuck states, messy user input, and safety/security risks
-─────────────────────────────────
-Reviewer feedback returns to Manager
-Manager decides whether to fix, continue, stop, or create the next task
-```
-
-### Role and data flow
-
-```mermaid
-flowchart TD
-    H["Human"]
-
-    HD["HUMAN_DIRECTIVE<br/>Stable project/session mission<br/>Copied forward unless the human edits it"]
-    HT["HUMAN_NEW_THOUGHT_AND_SUGGESTION<br/>Direction, question, idea, taste, concern"]
-    HI["HUMAN_SUGGESTED_NEW_TASK_OR_ITEM<br/>Explicit feature or todo candidate"]
-
-    M0["Manager Loop Start"]
-    HO["HANDOFF<br/>Manager memory<br/>Read once at loop start"]
-    DB["DB State<br/>Plan, todo JSON, manager messages,<br/>worker reports, reviewer feedback"]
-
-    DIGEST["INPUT_DIGEST<br/>Understand human, worker, reviewer, todo, directive"]
-    DECIDE["DECISION<br/>Previous step pass/fail/blocked?<br/>Next action: fix, continue, stop, or new task"]
-
-    MM["MANAGER_MESSAGE<br/>Shared guidance for Manager, Worker, Reviewer"]
-    PLAN["PLAN<br/>Strategy"]
-    TL["TODO_LIST<br/>Human-readable work list"]
-    TJ["TODO_UPDATE_JSON<br/>Machine-readable todo source of truth"]
-
-    SC["SUGGESTION_CONTENT<br/>Manager digestion and task tracking"]
-    SV["SUGGESTION_VERIFICATION<br/>Acceptance criteria"]
-    HU["HANDOFF_UPDATE JSON<br/>Update Manager memory"]
-
-    W["Worker<br/>Executes one task"]
-    WR["WORKER_REPORT"]
-    FC["FILES_CHANGED"]
-    TR["TEST_RESULT"]
-    KI["KNOWN_ISSUES"]
-
-    R["Reviewer<br/>QA, bug, UI/UX, risk review"]
-    RF["REVIEWER_FEEDBACK<br/>QA, bugs, UI/UX, risks, next action"]
-
-    H --> HD
-    H --> HT
-    H --> HI
-
-    HD --> M0
-    HT --> M0
-    HI --> M0
-    HO --> M0
-    DB --> M0
-
-    M0 --> DIGEST
-    DIGEST --> DECIDE
-
-    DECIDE --> MM
-    DECIDE --> PLAN
-    PLAN --> TL
-    TL --> TJ
-
-    TJ -->|"valid JSON"| SC
-    TJ -.->|"missing or invalid: repair before release"| M0
-
-    SC --> SV
-    DECIDE --> HU
-    HU --> HO
-
-    HD --> W
-    MM --> W
-    TL --> W
-    SC --> W
-    SV --> W
-
-    W --> WR
-    W --> FC
-    W --> TR
-    W --> KI
-
-    HD --> R
-    MM --> R
-    WR --> R
-    FC --> R
-    TR --> R
-    KI --> R
-    SV --> R
-
-    R --> RF
-    RF --> M0
-```
-
-### Time sequence
-
-```mermaid
-sequenceDiagram
-    participant Human
-    participant DB
-    participant Manager
-    participant Handoff
-    participant Worker
-    participant Reviewer
-
-    Human->>DB: HUMAN_DIRECTIVE<br/>stable mission, human-edited only
-    Human->>DB: HUMAN_NEW_THOUGHT_AND_SUGGESTION
-    Human->>DB: HUMAN_SUGGESTED_NEW_TASK_OR_ITEM
-
-    Handoff->>Manager: Read once at Manager loop start
-    DB->>Manager: Directive, manager messages, pending human inputs
-    DB->>Manager: Current plan/todos, worker report, reviewer feedback
-
-    Manager->>Manager: INPUT_DIGEST
-    Manager->>Manager: DECISION
-    Manager->>DB: MANAGER_MESSAGE
-    Manager->>DB: PLAN
-    Manager->>DB: TODO_LIST
-    Manager->>DB: TODO_UPDATE_JSON
-
-    alt TODO_UPDATE_JSON valid
-        Manager->>DB: Save SUGGESTION_CONTENT and SUGGESTION_VERIFICATION
-        Manager->>Handoff: HANDOFF_UPDATE JSON
-        DB->>Worker: Directive + manager message + todo list + task context
-        Worker->>DB: WORKER_REPORT
-        Worker->>DB: FILES_CHANGED
-        Worker->>DB: TEST_RESULT
-        Worker->>DB: KNOWN_ISSUES
-        DB->>Reviewer: Directive + manager message + worker output + acceptance criteria
-        Reviewer->>DB: REVIEWER_FEEDBACK / REVIEWER_SUGGESTION
-        DB->>Manager: Reviewer feedback returns to next Manager loop
-    else TODO_UPDATE_JSON missing or invalid
-        Manager->>DB: Save rejection/error message
-        Manager->>Manager: Repair JSON before releasing work
-    end
-```
-
-### Hard rules
-
-- `HUMAN_DIRECTIVE` is the stable project or session purpose. The agent loop does not rewrite or delete it.
-- `MANAGER_MESSAGE` is shared guidance for the Manager, Worker, and Reviewer.
-- The Worker receives the directive, Manager message, todo list, and current task context—not the handoff.
-- The Reviewer does not assign work directly. Its structured feedback returns to the Manager.
-- `SUGGESTION_CONTENT` and `SUGGESTION_VERIFICATION` support Manager digestion and task tracking.
-- `TODO_UPDATE_JSON` is the machine-readable todo source of truth. Missing or invalid JSON must be repaired before work is released.
-- Handoff is Manager memory: read at the start of a Manager loop and updated as JSON.
+**Full specification — complete loop, role/data-flow diagram, time sequence, and hard
+rules: [docs/architecture/agent-loop-contract.md](docs/architecture/agent-loop-contract.md)**
 
 ## Why Task Hounds?
 
@@ -266,7 +106,19 @@ sequenceDiagram
 
 ## Quick start
 
-### Requirements
+### Fastest way: Docker Compose (any platform)
+
+```bash
+git clone https://github.com/catowabisabi/task-hounds.git
+cd task-hounds
+docker compose up
+```
+
+Then open [http://localhost:8765](http://localhost:8765). The image builds the dashboard for you — no Python or Node setup required. Project data persists in `./data`.
+
+### From source (Windows, recommended for the managed runtime)
+
+#### Requirements
 
 - Windows (recommended for the managed runtime and desktop build)
 - Python 3.11+
@@ -306,24 +158,71 @@ Task Hounds keeps the legacy `POWER_TEAMS_` environment-variable prefix for comp
 ### 4. Run
 
 ```powershell
-$env:PYTHONPATH = "core"
-python core\api\server.py --port 8765
+task-hounds-serve --port 8765
 ```
 
+(Equivalent: `python -m task_hounds_api --port 8765`.)
+
 Open [http://localhost:8765](http://localhost:8765), create or select a workspace, write a Human Directive, then choose **Start Loop** or **Run Once**.
+
+By default, projects are created under `~/task-hounds-projects`. Override with the `TASK_HOUNDS_PROJECTS_DIR` environment variable. Existing installs that already use `C:\task-hounds-projects` keep working unchanged.
 
 > Task Hounds will not begin autonomous work without a pending Human Directive.
 
 For more detail, see the [Getting Started guide](docs/guides/getting-started.md).
 
+## Model providers
+
+Task Hounds talks to models through OpenCode's Anthropic-compatible providers. Three are bundled — bring any one key and the pack runs:
+
+| Provider | Models | Env key |
+| --- | --- | --- |
+| MiniMax (default) | `MiniMax-M2.7` | `OPENCODE_API_KEY_MINIMAX` |
+| Moonshot Kimi | `kimi-k3` (1M context), `kimi-k2.7-code`, `kimi-k2.7-code-highspeed` | `OPENCODE_API_KEY_KIMI` |
+| Alibaba Bailian | Qwen3.x, GLM, Kimi K2.5 | `OPENCODE_API_KEY_BAILIAN` |
+
+The default model for every role is `minimax-coding-plan/MiniMax-M2.7`.
+
+### Switch the whole pack to Kimi K3
+
+Kimi K3 ships with a 1M-token context window and thinking on by default — a great fit for long agent loops. Get a key from the [Kimi Open Platform](https://platform.kimi.ai/console/api-keys), then in `.env`:
+
+```dotenv
+OPENCODE_API_KEY_KIMI=your_kimi_api_key
+TASK_HOUNDS_OPENCODE_MODEL=kimi-coding-plan/kimi-k3
+```
+
+Restart, and Manager, Worker, and Reviewer all run on Kimi K3. You can also paste the key in the dashboard's Runtime panel, or pick the model per role in the binding editor.
+
+### Mix models per role
+
+Each role resolves its model independently, so you can put the strongest reasoner where it matters:
+
+```dotenv
+TASK_HOUNDS_MANAGER_OPENCODE_MODEL=kimi-coding-plan/kimi-k3
+TASK_HOUNDS_REVIEWER_OPENCODE_MODEL=kimi-coding-plan/kimi-k3
+# Worker stays on the default MiniMax-M2.7
+```
+
+Role bindings set in the dashboard (stored in the DB) override these env vars.
+
 ## Other ways to run
 
-### Docker
+### Docker (without Compose)
 
 ```bash
 docker build -t task-hounds .
 docker run --rm -p 8765:8765 -v "$(pwd)/data:/app/data" task-hounds
 ```
+
+### pip install from Git
+
+```bash
+pip install git+https://github.com/catowabisabi/task-hounds.git
+task-hounds --port 8765
+```
+
+This installs the backend server and CLI. The web dashboard is served when running from a repo checkout or Docker; a pip-only install exposes the HTTP API.
 
 ### Windows desktop app
 
@@ -346,48 +245,13 @@ SQLite is the runtime source of truth for project sessions, directives, todos, r
 ```text
 task-hounds/
 ├── core/
-│   ├── api/                 # HTTP API and dashboard server
-│   ├── db/                  # SQLite schema and migrations
-│   ├── power_teams/         # Legacy Python package
-│   └── task_hounds_api/     # Current backend and agent flows
+│   ├── db/                  # SQLite schema, migrations, and backups
+│   ├── runtime/             # Local runtime state and logs (not committed)
+│   └── task_hounds_api/     # Backend: FastAPI server, agent workflow, OpenCode runtime
+│       ├── api/             # HTTP API and dashboard server
+│       ├── db/              # DB access layer
+│       ├── opencode/        # Managed OpenCode runtime and client
+│       └── workflow/        # Manager/Worker/Reviewer loop, contracts, repair
 ├── ui/
 │   ├── web/                 # React + Vite dashboard
-│   ├── desktop/             # Electron desktop wrapper
-│   └── mobile/              # React + Capacitor Android client
-├── docs/                    # Guides, architecture, tests, and images
-├── Dockerfile
-└── .env.example
-```
-
-Runtime data, SQLite databases, logs, local `.env` files, personal OpenCode configuration, and build output are intentionally excluded from the repository.
-
-## Development
-
-Backend tests:
-
-```powershell
-pytest
-```
-
-Web dashboard:
-
-```powershell
-cd ui/web
-npm run build
-```
-
-Contributions, bug reports, and ideas are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before submitting changes or reporting a vulnerability.
-
-## Support the project
-
-If Task Hounds saves you time—or you simply like the idea of a tiny AI dog pack building software—consider buying me a coffee. It helps fund development, testing, and the occasional real coffee behind the virtual hounds.
-
-<p align="center">
-  <a href="https://buymeacoffee.com/catowabisabi?new=1">
-    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" width="210">
-  </a>
-</p>
-
-## License
-
-Task Hounds is released under the [MIT License](LICENSE).
+│   ├── desktop/             # Electr

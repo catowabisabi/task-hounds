@@ -1,0 +1,170 @@
+﻿{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["oh-my-openagent@4.5.12", "opencode-scheduler@1.3.0"],
+  "provider": {
+    "minimax-coding-plan": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "MiniMax Token Plan",
+      "options": {
+        "baseURL": "https://api.minimax.io/anthropic/v1",
+        "apiKey": "${OPENCODE_API_KEY_MINIMAX}"
+      },
+      "models": {
+        "MiniMax-M2.7": {
+          "name": "MiniMax-M2.7",
+          "limit": {
+            "output": 4096,
+            "context": 128000
+          }
+        }
+      }
+    },
+
+    "kimi-coding-plan": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "Moonshot Kimi",
+      "options": {
+        "baseURL": "https://api.moonshot.ai/anthropic",
+        "apiKey": "${OPENCODE_API_KEY_KIMI}"
+      },
+      "models": {
+        "kimi-k3": {
+          "name": "Kimi K3",
+          "limit": {
+            "output": 4096,
+            "context": 1048576
+          }
+        },
+        "kimi-k2.7-code": {
+          "name": "Kimi K2.7 Code",
+          "limit": {
+            "output": 4096,
+            "context": 262144
+          },
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 1024
+            }
+          }
+        },
+        "kimi-k2.7-code-highspeed": {
+          "name": "Kimi K2.7 Code Highspeed",
+          "limit": {
+            "output": 4096,
+            "context": 262144
+          },
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 1024
+            }
+          }
+        }
+      }
+    },
+
+    "bailian-coding-plan": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "Alibaba Cloud Model Studio",
+      "options": {
+        "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/apps/anthropic/v1",
+        "apiKey": "${OPENCODE_API_KEY_BAILIAN}"
+      },
+      "models": {
+        "qwen3.7-max": {
+          "name": "Qwen3.7 Max",
+          "limit": {
+            "output": 4096,
+            "context": 128000
+          },
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 8192
+            }
+          }
+        },
+        "qwen3.6-plus": {
+          "name": "Chris-Qwen3.6 Plus",
+          "limit": {
+            "output": 4096,
+            "context": 128000
+          },
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 1024
+            }
+          }
+        },
+        "qwen3.5-plus": {
+          "name": "Qwen3.5 Plus",
+          "limit": {
+            "output": 4096,
+            "context": 128000
+          },
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 1024
+            }
+          }
+        },
+        "qwen3-max-2026-01-23": {
+          "name": "Qwen3 Max 0123",
+          "limit": {
+            "output": 4096,
+            "context": 128000
+          }
+        },
+        "qwen3-coder-next": {
+          "name": "Qwen3 Coder Next",
+          "limit": {
+            "output": 4096,
+            "context": 128000
+          }
+        },
+        "qwen3-coder-plus": {
+          "name": "Qwen3 Coder Plus",
+          "limit": {
+            "output": 4096,
+            "context": 128000
+          }
+        },
+        "MiniMax-M2.5": {
+          "name": "MiniMax M2.5"
+        },
+        "glm-5": {
+          "name": "GLM-5",
+          "limit": {
+            "output": 4096,
+            "context": 128000
+          },
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 1024
+            }
+          }
+        },
+        "glm-4.7": {
+          "name": "GLM-4.7",
+          "limit": {
+            "output": 4096,
+            "context": 128000
+          }
+        },
+        "kimi-k2.5": {
+          "name": "Kimi K2.5",
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 1024
+            }
+          }
+        }
+      }
+    }
+  }
+}

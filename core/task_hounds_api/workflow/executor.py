@@ -192,24 +192,49 @@ def _load_prompt(role: str) -> str:
 # ── JSON extraction ──────────────────────────────────────────────────────────
 
 def extract_json_object(text: str, required_keys: set[str]) -> dict:
-    """Find the first JSON object in `text` (within ```json fences if present)."""
-    fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if fence:
-        candidate = fence.group(1)
-    else:
-        start = text.find("{")
-        end = text.rfind("}")
-        if start == -1 or end == -1 or end <= start:
-            raise ValueError("no JSON object found")
-        candidate = text[start : end + 1]
-    try:
-        obj = json.loads(candidate)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"invalid JSON: {e}") from e
-    missing = required_keys - set(obj.keys())
+    """Find the JSON object in `text` that best satisfies `required_keys`.
+
+    Agent output frequently contains several JSON blocks — todo updates,
+    <HANDOFF_UPDATE> payloads, schema echoes — so taking only the *first*
+    fenced block used to grab the wrong object and fail with
+    "missing required keys" even though the contract JSON was present
+    later in the message. Score every fenced block (plus the outermost
+    brace span as a fallback) by required-key coverage and return the
+    best match.
+    """
+    candidates: list[str] = [
+        m.group(1)
+        for m in re.finditer(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    ]
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end > start:
+        candidates.append(text[start : end + 1])
+    if not candidates:
+        raise ValueError("no JSON object found")
+    best: dict | None = None
+    best_coverage = -1
+    parse_error: Exception | None = None
+    for candidate in candidates:
+        try:
+            obj = json.loads(candidate)
+        except json.JSONDecodeError as e:
+            parse_error = e
+            continue
+        if not isinstance(obj, dict):
+            continue
+        coverage = len(required_keys & set(obj.keys()))
+        if coverage > best_coverage:
+            best = obj
+            best_coverage = coverage
+            if not (required_keys - set(obj.keys())):
+                break
+    if best is None:
+        raise ValueError(f"invalid JSON: {parse_error}")
+    missing = required_keys - set(best.keys())
     if missing:
         raise ValueError(f"missing required keys: {sorted(missing)}")
-    return obj
+    return best
 
 
 def stringify_field(value) -> str:

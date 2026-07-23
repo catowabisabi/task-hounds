@@ -112,6 +112,8 @@ ui/debug/logs/
 .hermes/
 .sisyphus/
 .omo/
+mcp/
+audit_migration/
 
 # Local test artifacts
 coverage/
@@ -135,6 +137,12 @@ test-tmp-*/
 
 # Docs data dumps
 docs/opencode/
+core/db/rebuild_db/
+core/db/.fuse_hidden*
 
 # Artwork work files
 *.af
+
+# Marketing materials (local only, do not publish)
+marketing/
+可改進.md

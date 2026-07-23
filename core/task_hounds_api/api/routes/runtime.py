@@ -42,6 +42,7 @@ def _env_path() -> Path:
 
 SUPPORTED_CREDENTIAL_ENV_VARS = {
     "minimax_api_key": "OPENCODE_API_KEY_MINIMAX",
+    "kimi_api_key": "OPENCODE_API_KEY_KIMI",
     "bailian_api_key": "OPENCODE_API_KEY_BAILIAN",
 }
 

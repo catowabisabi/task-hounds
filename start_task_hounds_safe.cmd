@@ -163,13 +163,14 @@ if %ERRORLEVEL% neq 0 (
 )
 echo.
 
-echo [6/7] Preflight: verify MiniMax key is available from env or .env...
+echo [6/7] Preflight: verify a provider API key is available from env or .env...
 cd /d "%ROOT%"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$key='OPENCODE_API_KEY_MINIMAX'; if ([Environment]::GetEnvironmentVariable($key)) { Write-Host ($key + '= present (process env)'); exit 0 }; $paths=@((Join-Path $env:POWER_TEAMS_RUNTIME_DIR '.env'),(Join-Path $env:ROOT '.env')); foreach ($path in $paths) { if (-not (Test-Path -LiteralPath $path)) { continue }; foreach ($line in Get-Content -LiteralPath $path) { if ($line -match ('^\s*' + [regex]::Escape($key) + '\s*=\s*(.+?)\s*$')) { $value=$Matches[1].Trim().Trim('\"').Trim([char]39); if ($value) { Write-Host ($key + '= present (' + $path + ')'); exit 0 } } } }; Write-Host ($key + '= MISSING'); Write-Host 'Checked:'; foreach ($path in $paths) { Write-Host ('  - ' + $path) }; exit 2"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$keys=@('OPENCODE_API_KEY_MINIMAX','OPENCODE_API_KEY_KIMI','OPENCODE_API_KEY_BAILIAN'); $paths=@((Join-Path $env:POWER_TEAMS_RUNTIME_DIR '.env'),(Join-Path $env:ROOT '.env')); $found=@(); foreach ($key in $keys) { if ([Environment]::GetEnvironmentVariable($key)) { $found += ($key + ' (process env)'); continue }; foreach ($path in $paths) { if (-not (Test-Path -LiteralPath $path)) { continue }; $hit=$false; foreach ($line in Get-Content -LiteralPath $path) { if ($line -match ('^\s*' + [regex]::Escape($key) + '\s*=\s*(.+?)\s*$')) { $value=$Matches[1].Trim().Trim('\"').Trim([char]39); if ($value) { $found += ($key + ' (' + $path + ')'); $hit=$true; break } } }; if ($hit) { break } } }; if ($found.Count -gt 0) { foreach ($f in $found) { Write-Host ('present: ' + $f) }; exit 0 }; Write-Host 'No provider API key found. Set at least one of:'; foreach ($key in $keys) { Write-Host ('  - ' + $key) }; Write-Host 'Checked:'; foreach ($path in $paths) { Write-Host ('  - ' + $path) }; exit 2"
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo ERROR: OPENCODE_API_KEY_MINIMAX was not found in process env or .env files.
-    echo    Check:
+    echo ERROR: no provider API key was found in process env or .env files.
+    echo    Set at least one of OPENCODE_API_KEY_MINIMAX, OPENCODE_API_KEY_KIMI,
+    echo    or OPENCODE_API_KEY_BAILIAN in:
     echo      %POWER_TEAMS_RUNTIME_DIR%\.env
     echo    or:
     echo      %ROOT%\.env
