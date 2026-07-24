@@ -198,7 +198,12 @@ def _reconstruct_flow_input_from_run(run: dict) -> M.FlowInput:
         project_session_id=str(run.get("project_session_id", "")),
         human_directive=str(input_dict.get("human_directive", "")),
         workspace_path=workspace_path,
-        manager_opencode_session_id=run.get("manager_opencode_session_id"),
+        # Resume should not reuse or even advertise the previous Manager
+        # OpenCode session. Manager output is a strict JSON control plane,
+        # so stale conversational context from an older contract can poison
+        # the repair loop. Worker/Reviewer retain their sessions for task
+        # continuity.
+        manager_opencode_session_id=None,
         worker_opencode_session_id=run.get("worker_opencode_session_id"),
         reviewer_opencode_session_id=run.get("reviewer_opencode_session_id"),
         run_id=int(run["id"]),
