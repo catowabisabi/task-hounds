@@ -144,7 +144,7 @@ def apply_handoff_update(
     if not fields:
         return None
 
-    db_wf.upsert_handoff(session_id, updated_by=updated_by, **fields)
+    db_wf.upsert_handoff(session_id, **{**fields, "updated_by": updated_by})
     handoff = db_wf.get_handoff(session_id)
     return handoff["version"] if handoff else None
 
