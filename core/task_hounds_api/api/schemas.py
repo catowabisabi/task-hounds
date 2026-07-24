@@ -107,6 +107,11 @@ class RuntimePolicyUpdate(BaseModel):
     close_behavior: str | None = None
     on_opencode_crash: str | None = None
     max_managed_opencode_servers: int | None = None
+    graphflow_worker_count: int | None = None
+    graphflow_max_active_jobs: int | None = None
+    opencode_concurrency: int | None = None
+    graphflow_max_cpu_percent: float | None = None
+    graphflow_max_memory_percent: float | None = None
     default_topology: str | None = None
     default_shared_port: int | None = None
     allow_external_attach: bool | None = None

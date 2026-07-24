@@ -23,6 +23,7 @@ from task_hounds_api.opencode.config import (
     reset_cache,
 )
 from task_hounds_api.api import schemas
+from task_hounds_api.workflow import capacity as wf_capacity
 
 router = APIRouter(prefix="/api/runtime", tags=["runtime"])
 
@@ -273,16 +274,25 @@ def runtime_status() -> dict:
         recommended_action = None
 
     active_session = db_project.get_active_session() or {}
-    active_job = (
-        db_jobs.active_for_session(str(active_session.get("id")))
-        if active_session.get("id")
-        else None
-    )
+    active_jobs = db_jobs.active()
+    active_job = next(
+        (
+            job for job in active_jobs
+            if str(job.get("project_session_id") or "") == str(active_session.get("id") or "")
+        ),
+        None,
+    ) or (active_jobs[0] if active_jobs else None)
     active_work = None
     if active_job:
+        session_hint = (
+            ""
+            if str(active_job.get("project_session_id") or "") == str(active_session.get("id") or "")
+            else f" in session {active_job.get('project_session_id')}"
+        )
         active_work = (
             f"GraphFlow run #{active_job['run_id']} "
             f"({active_job.get('workflow_status') or active_job['status']})"
+            f"{session_hint}"
         )
 
     return {
@@ -298,6 +308,8 @@ def runtime_status() -> dict:
         ),
         "servers": servers,
         "active_work": active_work,
+        "active_jobs": active_jobs,
+        "graphflow_capacity": wf_capacity.snapshot().as_dict(),
         "last_checkpoint": None,
         "role_bindings": bindings,
         "policy": db_rt.get_policy(),

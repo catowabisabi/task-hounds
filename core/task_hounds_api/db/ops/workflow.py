@@ -422,6 +422,7 @@ def upsert_handoff(session_id: str, path: Path | None = None, **fields) -> None:
     current_task, current_micro_flow (list), human_concerns, known_bugs (list), completion_criteria (list)."""
     if not fields:
         return
+    updated_by = str(fields.pop("updated_by", None) or "manager")
     payload = {}
     for k, v in fields.items():
         if k not in HANDOFF_FIELDS:
@@ -442,7 +443,12 @@ def upsert_handoff(session_id: str, path: Path | None = None, **fields) -> None:
         ).fetchone()
         if existing:
             sets = ", ".join(f"{k}=?" for k in payload)
-            values = list(payload.values()) + [existing["id"]]
+            if sets:
+                sets = f"{sets}, updated_by=?"
+                values = list(payload.values()) + [updated_by, existing["id"]]
+            else:
+                sets = "updated_by=?"
+                values = [updated_by, existing["id"]]
             db.execute(
                 f"UPDATE project_handoff SET {sets}, updated_at=CURRENT_TIMESTAMP WHERE id=?",
                 values,
@@ -452,8 +458,8 @@ def upsert_handoff(session_id: str, path: Path | None = None, **fields) -> None:
             placeholders = ", ".join("?" for _ in payload)
             values = list(payload.values())
             db.execute(
-                f"INSERT INTO project_handoff (session_id, round_id, {cols}, updated_by) VALUES (?, ?, {placeholders}, 'manager')",
-                [session_id, round_id] + values,
+                f"INSERT INTO project_handoff (session_id, round_id, {cols}, updated_by) VALUES (?, ?, {placeholders}, ?)",
+                [session_id, round_id] + values + [updated_by],
             )
         db.commit()
 

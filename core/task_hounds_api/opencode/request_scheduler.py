@@ -8,6 +8,8 @@ import threading
 from collections.abc import Callable
 from typing import TypeVar
 
+from task_hounds_api.workflow.capacity import opencode_concurrency
+
 T = TypeVar("T")
 
 
@@ -25,7 +27,7 @@ class OpenCodeRequestScheduler:
     def __init__(self) -> None:
         self._loop = asyncio.new_event_loop()
         self._ready = threading.Event()
-        self._server_limit = max(1, int(os.getenv("POWER_TEAMS_OPENCODE_CONCURRENCY", "3")))
+        self._server_limit = opencode_concurrency()
         self._server_slots: dict[str, asyncio.Semaphore] = {}
         self._project_graph_locks: dict[str, asyncio.Lock] = {}
         self._thread = threading.Thread(

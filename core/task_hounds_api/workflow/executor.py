@@ -1544,7 +1544,7 @@ def manager_reconcile(state: M.FlowState) -> M.FlowState:
             if (text := stringify_field(item))
         )),
     }
-    db_wf.upsert_handoff(fi.project_session_id, updated_by="manager", **state.handoff_update)
+    db_wf.upsert_handoff(fi.project_session_id, **{**state.handoff_update, "updated_by": "manager"})
     if state.manager_message.strip():
         db_wf.append_manager_message(fi.project_session_id, state.manager_message)
     if state.suggestion_id is not None:

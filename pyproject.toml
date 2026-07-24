@@ -8,6 +8,7 @@ requires-python = ">=3.11"
 dependencies = [
   "requests>=2.31",
   "langgraph>=0.2.60",
+  "psutil>=5.9.0",
 ]
 keywords = ["ai", "agents", "orchestration", "automation", "opencode", "developer-tools"]
 classifiers = [

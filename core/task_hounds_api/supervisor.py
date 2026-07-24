@@ -25,6 +25,8 @@ from task_hounds_api.opencode.process import (
     stop_serve,
     wait_for_ready,
 )
+from task_hounds_api.workflow.capacity import graphflow_worker_count
+from task_hounds_api.db.ops import graphflow_jobs as db_graphflow_jobs
 
 
 def _runtime_logger(name: str, filename: str) -> logging.Logger:
@@ -131,7 +133,7 @@ class Supervisor:
         self.opencode_port = self.preferred_opencode_port
         self.opencode_proc: subprocess.Popen | None = None
         self.backend_proc: subprocess.Popen | None = None
-        self.graphflow_worker_proc: subprocess.Popen | None = None
+        self.graphflow_worker_procs: list[subprocess.Popen] = []
         self.last_command: dict[str, Any] = {}
         self.stopping = False
         self.backend_ready = False
@@ -149,10 +151,11 @@ class Supervisor:
     def _state(self, error: str = "") -> dict[str, Any]:
         oc_alive = self.opencode_proc is not None and self.opencode_proc.poll() is None
         backend_alive = self.backend_proc is not None and self.backend_proc.poll() is None
-        worker_alive = (
-            self.graphflow_worker_proc is not None
-            and self.graphflow_worker_proc.poll() is None
-        )
+        worker_pids = [
+            proc.pid
+            for proc in self.graphflow_worker_procs
+            if proc.poll() is None
+        ]
         return {
             "supervisor_pid": os.getpid(),
             "status": "stopping" if self.stopping else "running",
@@ -169,8 +172,11 @@ class Supervisor:
                 "port": self.api_port,
             },
             "graphflow_worker": {
-                "pid": self.graphflow_worker_proc.pid if worker_alive else None,
-                "status": "running" if worker_alive else "stopped",
+                "pid": worker_pids[0] if worker_pids else None,
+                "pids": worker_pids,
+                "count": len(worker_pids),
+                "desired_count": graphflow_worker_count(),
+                "status": "running" if worker_pids else "stopped",
             },
             "opencode": {
                 "pid": self.opencode_proc.pid if oc_alive else None,
@@ -308,11 +314,12 @@ class Supervisor:
             proc.terminate()
         self.backend_proc = None
 
-    def start_graphflow_worker(self) -> None:
+    def start_graphflow_worker(self) -> subprocess.Popen:
         env = os.environ.copy()
         env["TASK_HOUNDS_SUPERVISED"] = "1"
         env["TASK_HOUNDS_OPENCODE_PORT"] = str(self.opencode_port)
-        self.graphflow_worker_proc = subprocess.Popen(
+        index = len(self.graphflow_worker_procs) + 1
+        proc = subprocess.Popen(
             self._role_command("worker"),
             cwd=str(ROOT / "core"),
             env=env,
@@ -322,16 +329,16 @@ class Supervisor:
             encoding="utf-8",
             errors="replace",
         )
+        self.graphflow_worker_procs.append(proc)
         self._capture_process_logs(
-            self.graphflow_worker_proc,
-            "graphflow-worker.out.log",
-            "graphflow-worker.err.log",
+            proc,
+            f"graphflow-worker-{index}.out.log",
+            f"graphflow-worker-{index}.err.log",
         )
+        return proc
 
-    def stop_graphflow_worker(self) -> None:
-        proc = self.graphflow_worker_proc
+    def stop_graphflow_worker(self, proc: subprocess.Popen) -> None:
         if proc is None or proc.poll() is not None:
-            self.graphflow_worker_proc = None
             return
         if os.name == "nt":
             subprocess.run(
@@ -342,7 +349,41 @@ class Supervisor:
             )
         else:
             proc.terminate()
-        self.graphflow_worker_proc = None
+
+    def start_graphflow_workers(self) -> None:
+        self.graphflow_worker_procs = [
+            proc for proc in self.graphflow_worker_procs if proc.poll() is None
+        ]
+        desired = graphflow_worker_count()
+        while len(self.graphflow_worker_procs) > desired:
+            proc = self.graphflow_worker_procs.pop()
+            self.stop_graphflow_worker(proc)
+        while len(self.graphflow_worker_procs) < desired:
+            self.start_graphflow_worker()
+
+    def stop_graphflow_workers(self) -> None:
+        for proc in list(self.graphflow_worker_procs):
+            self.stop_graphflow_worker(proc)
+        self.graphflow_worker_procs = []
+
+    def suspend_previous_graphflow_jobs(self) -> None:
+        value = os.environ.get("TASK_HOUNDS_RESUME_ACTIVE_JOBS_ON_START", "")
+        if value.strip().lower() in {"1", "true", "yes", "on"}:
+            return
+        try:
+            run_ids = db_graphflow_jobs.suspend_active_for_cold_start()
+        except Exception as exc:
+            print(
+                f"[supervisor] could not suspend previous GraphFlow jobs: {exc}",
+                file=sys.stderr,
+            )
+            return
+        if run_ids:
+            print(
+                "[supervisor] suspended previous GraphFlow runs on startup; "
+                f"manual resume required: {run_ids}",
+                file=sys.stderr,
+            )
 
     def handle_command(self) -> None:
         command = _read_json(command_path())
@@ -363,8 +404,8 @@ class Supervisor:
         if ok:
             # The worker inherited the previous managed port. Restart only the
             # worker; durable jobs remain queued/running and recover by lease.
-            self.stop_graphflow_worker()
-            self.start_graphflow_worker()
+            self.stop_graphflow_workers()
+            self.start_graphflow_workers()
         self.last_command = {
             "id": command_id,
             "ok": ok,
@@ -385,7 +426,8 @@ class Supervisor:
             print(f"[supervisor] OpenCode startup failed: {error}", file=sys.stderr)
         self.start_backend()
         if self.wait_for_backend_ready():
-            self.start_graphflow_worker()
+            self.suspend_previous_graphflow_jobs()
+            self.start_graphflow_workers()
         else:
             print(
                 "[supervisor] FastAPI did not become ready; GraphFlow worker "
@@ -402,22 +444,27 @@ class Supervisor:
                     time.sleep(1)
                     self.start_backend()
                     if self.wait_for_backend_ready():
-                        if self.graphflow_worker_proc is None:
-                            self.start_graphflow_worker()
+                        self.start_graphflow_workers()
                     else:
                         self.stop_backend()
-                if (
-                    self.graphflow_worker_proc is not None
-                    and self.graphflow_worker_proc.poll() is not None
-                ):
+                dead_workers = [
+                    proc for proc in self.graphflow_worker_procs
+                    if proc.poll() is not None
+                ]
+                if dead_workers:
                     print(
-                        "[supervisor] GraphFlow worker exited; restarting it.",
+                        f"[supervisor] {len(dead_workers)} GraphFlow worker(s) exited; restarting.",
                         file=sys.stderr,
                     )
-                    self.graphflow_worker_proc = None
+                    self.graphflow_worker_procs = [
+                        proc for proc in self.graphflow_worker_procs
+                        if proc.poll() is None
+                    ]
                     time.sleep(1)
                     if self.backend_ready:
-                        self.start_graphflow_worker()
+                        self.start_graphflow_workers()
+                elif self.backend_ready:
+                    self.start_graphflow_workers()
                 if self.opencode_proc is not None and self.opencode_proc.poll() is not None:
                     self.opencode_proc = None
                     self.publish("OpenCode exited unexpectedly; waiting for user-confirmed restart.")
@@ -429,7 +476,7 @@ class Supervisor:
         finally:
             self.stopping = True
             self.publish()
-            self.stop_graphflow_worker()
+            self.stop_graphflow_workers()
             self.stop_backend()
             self.stop_opencode()
             self.publish()

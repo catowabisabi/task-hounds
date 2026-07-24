@@ -53,12 +53,10 @@ const getFlow01Runs = (data: Flow01RunsResponse | null | undefined): Flow01RunIn
 
 const isFlow01Paused = (status?: string | null) => {
   const value = (status ?? "").toLowerCase();
-  return value === "paused" || value === "pausing" || value === "technical_error" || value.startsWith("paused_before_");
+  return value === "paused" || value === "pausing" || value.startsWith("paused_before_");
 };
 
 const isFlow01Running = (status?: string | null) => (status ?? "").toLowerCase() === "running";
-
-const isFlow01Actionable = (run: Flow01RunInfo) => isFlow01Running(run.status) || isFlow01Paused(run.status);
 
 const getRunInterruption = (run: Flow01RunInfo | null): FlowInterruption | null => {
   if (!run?.output_json) return null;
@@ -68,6 +66,13 @@ const getRunInterruption = (run: Flow01RunInfo | null): FlowInterruption | null 
     return null;
   }
 };
+
+const isFlow01Resumable = (run?: Flow01RunInfo | null) => {
+  if (!run) return false;
+  return isFlow01Paused(run.status) || ((run.status ?? "").toLowerCase() === "technical_error" && getRunInterruption(run)?.resumable === true);
+};
+
+const isFlow01Actionable = (run: Flow01RunInfo) => isFlow01Running(run.status) || isFlow01Resumable(run);
 
 function FlowInterruptionModal({ interruption, onClose }: { interruption: FlowInterruption; onClose: () => void }) {
   return createPortal(
@@ -1246,7 +1251,7 @@ export default function App() {
                 await sendExecutionCommand(
                   loop.running
                     ? "stop"
-                    : isFlow01Paused(flow01Run?.status)
+                    : isFlow01Resumable(flow01Run)
                       ? "resume"
                       : "start_fresh",
                 );
@@ -1387,17 +1392,17 @@ export default function App() {
             <button
               onClick={async () => {
                 if (flow01Run?.id == null || !isFlow01Actionable(flow01Run)) return;
-                await sendExecutionCommand(isFlow01Paused(flow01Run.status) ? "resume" : "pause");
+                await sendExecutionCommand(isFlow01Resumable(flow01Run) ? "resume" : "pause");
               }}
               disabled={!canPauseOrResumeFlow01 || executionCommandPending !== null}
               className="px-2 py-1 rounded text-[10px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              style={isFlow01Paused(flow01Run?.status)
+              style={isFlow01Resumable(flow01Run)
                 ? { background: "var(--green-bg)", color: "var(--green)", border: "1px solid var(--green-dim)" }
                 : isFlow01Running(flow01Run?.status)
                 ? { background: "var(--amber-bg)", color: "var(--amber)", border: "1px solid var(--amber-dim)" }
                 : { background: "var(--bg-panel)", color: "var(--text-dim)", border: "1px solid var(--border)" }
               }
-              title={!flow01Mode ? "Switch to GraphFlow to pause or resume runs" : isFlow01Paused(flow01Run?.status) ? "Resume from last checkpoint" : isFlow01Running(flow01Run?.status) ? "Pause before current step" : "No active or paused GraphFlow run"}
+              title={!flow01Mode ? "Switch to GraphFlow to pause or resume runs" : isFlow01Resumable(flow01Run) ? "Resume from last checkpoint" : isFlow01Running(flow01Run?.status) ? "Pause before current step" : "No active or resumable GraphFlow run"}
             >{isFlow01Paused(flow01Run?.status) ? "▶ Resume" : isFlow01Running(flow01Run?.status) ? "⏸ Pause" : "Pause/Resume"}</button>
           )}
           <button
@@ -1419,7 +1424,7 @@ export default function App() {
                 setLoopActionError(err instanceof Error ? err.message : "Run Once failed");
               }
             }}
-            disabled={loop.running || isFlow01Paused(flow01Run?.status) || !hasStartContext || executionCommandPending !== null}
+            disabled={loop.running || isFlow01Resumable(flow01Run) || !hasStartContext || executionCommandPending !== null}
             className="px-2.5 py-1 rounded text-[11px] font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             style={{ background: "var(--bg-panel)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
             title={!hasStartContext ? "Enter a Human Directive first" : undefined}

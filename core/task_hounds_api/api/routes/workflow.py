@@ -21,6 +21,7 @@ from task_hounds_api.db.ops import rounds as db_rounds
 from task_hounds_api.api.deps import resolve_session_id, require_session_id
 from task_hounds_api.api import schemas
 from task_hounds_api.workflow.loop import BackgroundLoop, run_once
+from task_hounds_api.workflow import capacity as wf_capacity
 from task_hounds_api.opencode import registry as oc_registry
 
 router = APIRouter(prefix="/api/workflow", tags=["workflow"])
@@ -494,6 +495,14 @@ def flow01_resume_run(run_id: int, body: dict | None = None) -> dict:
         or status.startswith("paused_before_")
         or (status == "technical_error" and db_wf.load_checkpoint(run_id) is not None)
     ):
+        if status == "technical_error":
+            return {
+                "ok": False,
+                "error": f"run {run_id} has no resumable checkpoint; start a fresh GraphFlow run instead.",
+                "error_code": "not_resumable",
+                "run_id": run_id,
+                "current_status": run.get("status"),
+            }
         return {
             "ok": False,
             "error": f"run {run_id} not in paused state (status={run.get('status')!r})",
@@ -558,6 +567,14 @@ def flow01_start_run(body: dict) -> dict:
             "ok": False,
             "error": f"session {project_session_id} already has active run {active_for_project[0]['id']}",
             "run_id": active_for_project[0]["id"],
+        }
+    capacity = wf_capacity.snapshot()
+    if not capacity.ok:
+        return {
+            "ok": False,
+            "error_code": "capacity_unavailable",
+            "error": capacity.reason or "GraphFlow capacity is unavailable.",
+            "capacity": capacity.as_dict(),
         }
     workspace_path = str(body.get("workspace_path", "") or "")
     try:
