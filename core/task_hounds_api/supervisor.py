@@ -355,6 +355,9 @@ class Supervisor:
             proc for proc in self.graphflow_worker_procs if proc.poll() is None
         ]
         desired = graphflow_worker_count()
+        while len(self.graphflow_worker_procs) > desired:
+            proc = self.graphflow_worker_procs.pop()
+            self.stop_graphflow_worker(proc)
         while len(self.graphflow_worker_procs) < desired:
             self.start_graphflow_worker()
 

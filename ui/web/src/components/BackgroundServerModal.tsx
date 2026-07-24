@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { apiGet, apiPost } from '../lib/api';
+import { apiGet, apiPost, apiPut } from '../lib/api';
 
 export interface McpServerInfo {
   server_name: string;
@@ -30,6 +30,19 @@ interface OpencodeServer {
 interface OpencodeResponse { servers: OpencodeServer[]; }
 interface StopAllResponse { ok: boolean; results: Array<{ server_id: string; ok: boolean; error?: string }>; }
 interface DiscoverResponse { discovered: Array<{ host: string; port: number }>; }
+interface GraphFlowCapacity {
+  ok: boolean;
+  reason: string | null;
+  active_jobs: number;
+  max_active_jobs: number;
+  worker_count: number;
+  opencode_concurrency: number;
+  cpu_percent: number | null;
+  max_cpu_percent: number;
+  memory_percent: number | null;
+  max_memory_percent: number;
+}
+interface RuntimeStatusResponse { graphflow_capacity?: GraphFlowCapacity; }
 
 function relativeTime(iso: string | undefined): string {
   if (!iso) return '-';
@@ -215,6 +228,9 @@ export function BackgroundServerModal({
   const [showStopAllConfirm, setShowStopAllConfirm] = useState(false);
   const [stopAllBusy, setStopAllBusy] = useState(false);
   const [configInfo, setConfigInfo] = useState<ConfigInfoData | null>(null);
+  const [capacity, setCapacity] = useState<GraphFlowCapacity | null>(null);
+  const [capacityDraft, setCapacityDraft] = useState({ maxJobs: 10, workers: 10, opencode: 10 });
+  const [capacitySaving, setCapacitySaving] = useState(false);
   const toastIdRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reportedErrorSigRef = useRef<string>('');
@@ -229,6 +245,17 @@ export function BackgroundServerModal({
     try {
       const data = await apiGet<OpencodeResponse>('/api/runtime/opencode');
       setServers(data.servers ?? []);
+    } catch { /* silent fail */ }
+    try {
+      const status = await apiGet<RuntimeStatusResponse>('/api/runtime/status');
+      if (status.graphflow_capacity) {
+        setCapacity(status.graphflow_capacity);
+        setCapacityDraft({
+          maxJobs: status.graphflow_capacity.max_active_jobs,
+          workers: status.graphflow_capacity.worker_count,
+          opencode: status.graphflow_capacity.opencode_concurrency,
+        });
+      }
     } catch { /* silent fail */ }
   }, []);
 
@@ -272,6 +299,26 @@ export function BackgroundServerModal({
     try { await apiPost<DiscoverResponse>('/api/runtime/discover'); } catch { /* optional */ }
     await load();
     setLoading(false);
+  };
+
+  const saveCapacity = async () => {
+    const maxJobs = Math.max(1, Math.floor(capacityDraft.maxJobs || 1));
+    const workers = Math.max(1, Math.floor(capacityDraft.workers || 1));
+    const opencode = Math.max(1, Math.floor(capacityDraft.opencode || 1));
+    setCapacitySaving(true);
+    try {
+      await apiPut('/api/runtime/policy', {
+        graphflow_max_active_jobs: maxJobs,
+        graphflow_worker_count: workers,
+        opencode_concurrency: opencode,
+      });
+      pushToast('Saved GraphFlow capacity', 'success');
+      await load();
+    } catch (err) {
+      pushToast('Capacity save failed: ' + (err instanceof Error ? err.message : String(err)), 'error');
+    } finally {
+      setCapacitySaving(false);
+    }
   };
 
   const handleStop = async (id: string) => {
@@ -365,6 +412,54 @@ export function BackgroundServerModal({
                     <strong>Loop Error:</strong> {loopActionError}
                   </div>
                 )}
+              </div>
+            )}
+
+            {capacity && (
+              <div className='rounded-lg p-3 space-y-3' style={{ background: 'var(--bg-base)', border: '1px solid var(--border-dim)' }}>
+                <div className='flex items-center justify-between gap-3'>
+                  <div>
+                    <div className='text-[11px] font-semibold' style={{ color: capacity.ok ? 'var(--green)' : 'var(--amber)' }}>GraphFlow Capacity</div>
+                    <div className='text-[10px] mt-1' style={{ color: 'var(--text-secondary)' }}>
+                      {capacity.active_jobs}/{capacity.max_active_jobs} jobs running
+                      {capacity.cpu_percent != null && ` · CPU ${capacity.cpu_percent.toFixed(1)}%`}
+                      {capacity.memory_percent != null && ` · Memory ${capacity.memory_percent.toFixed(1)}%`}
+                    </div>
+                  </div>
+                  <button onClick={saveCapacity} disabled={capacitySaving}
+                    className='px-2.5 py-1 rounded text-[10px] font-semibold disabled:opacity-50'
+                    style={{ background: 'var(--blue-bg)', color: 'var(--blue)', border: '1px solid var(--blue-dim)' }}>
+                    {capacitySaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+                {capacity.reason && (
+                  <div className='text-[10px] rounded p-2' style={{ background: 'var(--amber-bg)', color: 'var(--text-primary)', border: '1px solid var(--amber-dim)' }}>
+                    {capacity.reason}
+                  </div>
+                )}
+                <div className='grid grid-cols-3 gap-2'>
+                  <label className='text-[9px] uppercase tracking-wider' style={{ color: 'var(--text-dim)' }}>
+                    Parallel jobs
+                    <input type='number' min={1} max={200} value={capacityDraft.maxJobs}
+                      onChange={e => setCapacityDraft(prev => ({ ...prev, maxJobs: Number(e.target.value) }))}
+                      className='mt-1 w-full rounded px-2 py-1 text-[12px] font-mono'
+                      style={{ background: 'var(--bg-panel)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+                  </label>
+                  <label className='text-[9px] uppercase tracking-wider' style={{ color: 'var(--text-dim)' }}>
+                    Workers
+                    <input type='number' min={1} max={200} value={capacityDraft.workers}
+                      onChange={e => setCapacityDraft(prev => ({ ...prev, workers: Number(e.target.value) }))}
+                      className='mt-1 w-full rounded px-2 py-1 text-[12px] font-mono'
+                      style={{ background: 'var(--bg-panel)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+                  </label>
+                  <label className='text-[9px] uppercase tracking-wider' style={{ color: 'var(--text-dim)' }}>
+                    OpenCode calls
+                    <input type='number' min={1} max={200} value={capacityDraft.opencode}
+                      onChange={e => setCapacityDraft(prev => ({ ...prev, opencode: Number(e.target.value) }))}
+                      className='mt-1 w-full rounded px-2 py-1 text-[12px] font-mono'
+                      style={{ background: 'var(--bg-panel)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+                  </label>
+                </div>
               </div>
             )}
 

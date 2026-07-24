@@ -13,10 +13,12 @@ import sys
 from dataclasses import dataclass
 
 from task_hounds_api.db.ops import graphflow_jobs as db_jobs
+from task_hounds_api.db.ops import runtime as db_runtime
 
 
 DEFAULT_CPU_LIMIT = 90.0
 DEFAULT_MEMORY_LIMIT = 90.0
+DEFAULT_CONCURRENCY = 10
 
 
 @dataclass(frozen=True)
@@ -48,18 +50,24 @@ class CapacitySnapshot:
 
 
 def graphflow_worker_count() -> int:
-    return _env_int("TASK_HOUNDS_GRAPHFLOW_WORKER_COUNT", 1, minimum=1)
+    configured = os.getenv("TASK_HOUNDS_GRAPHFLOW_WORKER_COUNT")
+    if configured:
+        return _env_int("TASK_HOUNDS_GRAPHFLOW_WORKER_COUNT", DEFAULT_CONCURRENCY, minimum=1)
+    return _policy_int("graphflow_worker_count", DEFAULT_CONCURRENCY, minimum=1)
 
 
 def opencode_concurrency() -> int:
-    return _env_int("POWER_TEAMS_OPENCODE_CONCURRENCY", 3, minimum=1)
+    configured = os.getenv("POWER_TEAMS_OPENCODE_CONCURRENCY")
+    if configured:
+        return _env_int("POWER_TEAMS_OPENCODE_CONCURRENCY", DEFAULT_CONCURRENCY, minimum=1)
+    return _policy_int("opencode_concurrency", DEFAULT_CONCURRENCY, minimum=1)
 
 
 def max_active_jobs() -> int:
     configured = os.getenv("TASK_HOUNDS_MAX_ACTIVE_JOBS")
     if configured:
-        return _env_int("TASK_HOUNDS_MAX_ACTIVE_JOBS", 1, minimum=1)
-    return min(graphflow_worker_count(), opencode_concurrency())
+        return _env_int("TASK_HOUNDS_MAX_ACTIVE_JOBS", DEFAULT_CONCURRENCY, minimum=1)
+    return _policy_int("graphflow_max_active_jobs", DEFAULT_CONCURRENCY, minimum=1)
 
 
 def snapshot() -> CapacitySnapshot:
@@ -69,15 +77,14 @@ def snapshot() -> CapacitySnapshot:
     max_jobs = max_active_jobs()
     cpu = _cpu_percent()
     mem = _memory_percent()
-    max_cpu = _env_float("TASK_HOUNDS_MAX_CPU_PERCENT", DEFAULT_CPU_LIMIT)
-    max_mem = _env_float("TASK_HOUNDS_MAX_MEMORY_PERCENT", DEFAULT_MEMORY_LIMIT)
+    max_cpu = _configured_float("TASK_HOUNDS_MAX_CPU_PERCENT", "graphflow_max_cpu_percent", DEFAULT_CPU_LIMIT)
+    max_mem = _configured_float("TASK_HOUNDS_MAX_MEMORY_PERCENT", "graphflow_max_memory_percent", DEFAULT_MEMORY_LIMIT)
 
     reason = None
     if active_jobs >= max_jobs:
         reason = (
-            f"active job capacity reached ({active_jobs}/{max_jobs}). "
-            "Increase TASK_HOUNDS_MAX_ACTIVE_JOBS, TASK_HOUNDS_GRAPHFLOW_WORKER_COUNT, "
-            "and POWER_TEAMS_OPENCODE_CONCURRENCY if this machine can handle more."
+            f"{active_jobs} GraphFlow jobs are already running, and the current limit is {max_jobs}. "
+            "Wait for a job to finish, stop one from Background Servers, or raise the parallel job limit there."
         )
     elif cpu is not None and cpu >= max_cpu:
         reason = f"CPU is too busy ({cpu:.1f}% >= {max_cpu:.1f}%)."
@@ -121,6 +128,34 @@ def _env_float(name: str, default: float) -> float:
         return float(os.getenv(name, str(default)))
     except (TypeError, ValueError):
         return default
+
+
+def _policy() -> dict:
+    try:
+        return db_runtime.get_policy()
+    except Exception:
+        return {}
+
+
+def _policy_int(name: str, default: int, minimum: int) -> int:
+    try:
+        value = int(_policy().get(name) or default)
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, value)
+
+
+def _policy_float(name: str, default: float) -> float:
+    try:
+        return float(_policy().get(name) or default)
+    except (TypeError, ValueError):
+        return default
+
+
+def _configured_float(env_name: str, policy_name: str, default: float) -> float:
+    if os.getenv(env_name):
+        return _env_float(env_name, default)
+    return _policy_float(policy_name, default)
 
 
 def _cpu_percent() -> float | None:

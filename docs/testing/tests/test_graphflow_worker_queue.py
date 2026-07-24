@@ -216,7 +216,50 @@ def test_capacity_blocks_when_active_job_limit_is_reached(tmp_path, monkeypatch)
     assert snapshot.ok is False
     assert snapshot.active_jobs == 1
     assert snapshot.max_active_jobs == 1
-    assert "active job capacity reached" in str(snapshot.reason)
+    assert "GraphFlow jobs are already running" in str(snapshot.reason)
+
+
+def test_capacity_defaults_to_ten_parallel_jobs(tmp_path, monkeypatch):
+    monkeypatch.setenv("POWER_TEAMS_DB", str(tmp_path / "capacity-default.db"))
+    monkeypatch.delenv("TASK_HOUNDS_GRAPHFLOW_WORKER_COUNT", raising=False)
+    monkeypatch.delenv("TASK_HOUNDS_MAX_ACTIVE_JOBS", raising=False)
+    monkeypatch.delenv("POWER_TEAMS_OPENCODE_CONCURRENCY", raising=False)
+    monkeypatch.setenv("TASK_HOUNDS_MAX_CPU_PERCENT", "100")
+    monkeypatch.setenv("TASK_HOUNDS_MAX_MEMORY_PERCENT", "100")
+    init_db()
+
+    from task_hounds_api.workflow import capacity
+
+    snapshot = capacity.snapshot()
+
+    assert snapshot.ok is True
+    assert snapshot.max_active_jobs == 10
+    assert snapshot.worker_count == 10
+    assert snapshot.opencode_concurrency == 10
+
+
+def test_capacity_reads_manual_runtime_policy(tmp_path, monkeypatch):
+    monkeypatch.setenv("POWER_TEAMS_DB", str(tmp_path / "capacity-policy.db"))
+    monkeypatch.delenv("TASK_HOUNDS_GRAPHFLOW_WORKER_COUNT", raising=False)
+    monkeypatch.delenv("TASK_HOUNDS_MAX_ACTIVE_JOBS", raising=False)
+    monkeypatch.delenv("POWER_TEAMS_OPENCODE_CONCURRENCY", raising=False)
+    monkeypatch.setenv("TASK_HOUNDS_MAX_CPU_PERCENT", "100")
+    monkeypatch.setenv("TASK_HOUNDS_MAX_MEMORY_PERCENT", "100")
+    init_db()
+
+    from task_hounds_api.db.ops import runtime as db_runtime
+    from task_hounds_api.workflow import capacity
+
+    db_runtime.upsert_policy(
+        graphflow_worker_count=4,
+        graphflow_max_active_jobs=3,
+        opencode_concurrency=5,
+    )
+    snapshot = capacity.snapshot()
+
+    assert snapshot.max_active_jobs == 3
+    assert snapshot.worker_count == 4
+    assert snapshot.opencode_concurrency == 5
 
 
 def test_capacity_requires_matching_worker_pool(tmp_path, monkeypatch):

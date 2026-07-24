@@ -108,7 +108,7 @@ _RUNTIME_TABLES = (
     "agent_registry",
     "agent_runtime_bindings",
     "run_checkpoints",
-    "runtime_policies",
+    "runtime_policy",
 )
 
 
