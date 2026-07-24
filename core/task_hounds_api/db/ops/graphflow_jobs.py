@@ -1,6 +1,7 @@
 """Durable queue operations for the standalone GraphFlow worker."""
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -299,6 +300,62 @@ def get_for_run(run_id: int, path: Path | None = None) -> dict | None:
             "SELECT * FROM graphflow_jobs WHERE run_id=?", (run_id,)
         ).fetchone()
     return dict(row) if row else None
+
+
+def suspend_active_for_cold_start(path: Path | None = None) -> list[int]:
+    """Stop pre-existing GraphFlow work when the app starts cold.
+
+    Durable jobs are important for explicit resume, but silently continuing a
+    previous desktop session after boot is surprising and can write to the
+    wrong project while the user is looking at another session. Mark those
+    runs as operator-visible technical interruptions and leave resume as an
+    explicit action when a checkpoint exists.
+    """
+    with connect(path) as db:
+        db.execute("BEGIN IMMEDIATE")
+        rows = db.execute(
+            """SELECT gj.id, gj.run_id
+                 FROM graphflow_jobs gj
+                 JOIN workflow_runs wr ON wr.id=gj.run_id
+                WHERE gj.status IN ('queued', 'running')
+                  AND wr.status IN ('pending', 'running', 'recovering',
+                                    'pausing', 'stopping', 'cancelling')"""
+        ).fetchall()
+        run_ids = [int(row["run_id"]) for row in rows]
+        for row in rows:
+            run_id = int(row["run_id"])
+            resumable = db.execute(
+                "SELECT 1 FROM flow_checkpoints WHERE run_id=? LIMIT 1",
+                (run_id,),
+            ).fetchone() is not None
+            output = json.dumps({
+                "status": "technical_error",
+                "interruption": {
+                    "kind": "restart_required",
+                    "title": "GraphFlow paused after app restart",
+                    "reason": (
+                        "Task Hounds found this run active during startup and "
+                        "did not resume it automatically."
+                    ),
+                    "source": "supervisor_startup",
+                    "resumable": resumable,
+                },
+            }, ensure_ascii=False)
+            db.execute(
+                "UPDATE workflow_runs SET status='technical_error', output_json=? WHERE id=?",
+                (output, run_id),
+            )
+            db.execute(
+                """UPDATE graphflow_jobs
+                      SET status='cancelled', worker_id=NULL, worker_pid=NULL,
+                          heartbeat_at=NULL, finished_at=CURRENT_TIMESTAMP,
+                          last_error='Suspended after app restart; resume manually.',
+                          updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status IN ('queued', 'running')""",
+                (int(row["id"]),),
+            )
+        db.commit()
+    return run_ids
 
 
 def recover_stale(

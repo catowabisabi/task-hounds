@@ -26,6 +26,7 @@ from task_hounds_api.opencode.process import (
     wait_for_ready,
 )
 from task_hounds_api.workflow.capacity import graphflow_worker_count
+from task_hounds_api.db.ops import graphflow_jobs as db_graphflow_jobs
 
 
 def _runtime_logger(name: str, filename: str) -> logging.Logger:
@@ -362,6 +363,25 @@ class Supervisor:
             self.stop_graphflow_worker(proc)
         self.graphflow_worker_procs = []
 
+    def suspend_previous_graphflow_jobs(self) -> None:
+        value = os.environ.get("TASK_HOUNDS_RESUME_ACTIVE_JOBS_ON_START", "")
+        if value.strip().lower() in {"1", "true", "yes", "on"}:
+            return
+        try:
+            run_ids = db_graphflow_jobs.suspend_active_for_cold_start()
+        except Exception as exc:
+            print(
+                f"[supervisor] could not suspend previous GraphFlow jobs: {exc}",
+                file=sys.stderr,
+            )
+            return
+        if run_ids:
+            print(
+                "[supervisor] suspended previous GraphFlow runs on startup; "
+                f"manual resume required: {run_ids}",
+                file=sys.stderr,
+            )
+
     def handle_command(self) -> None:
         command = _read_json(command_path())
         command_id = str(command.get("id") or "")
@@ -403,6 +423,7 @@ class Supervisor:
             print(f"[supervisor] OpenCode startup failed: {error}", file=sys.stderr)
         self.start_backend()
         if self.wait_for_backend_ready():
+            self.suspend_previous_graphflow_jobs()
             self.start_graphflow_workers()
         else:
             print(

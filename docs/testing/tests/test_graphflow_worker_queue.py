@@ -97,6 +97,32 @@ def test_stale_worker_requeues_resume_from_checkpoint(tmp_path, monkeypatch):
     assert status == "recovering"
 
 
+def test_cold_start_suspends_existing_active_jobs(tmp_path, monkeypatch):
+    monkeypatch.setenv("POWER_TEAMS_DB", str(tmp_path / "cold-start.db"))
+    init_db()
+    running_run = _run("session-a")
+    queued_run = _run("session-b")
+    jobs.enqueue(running_run, "session-a", "start")
+    jobs.claim("old-worker", 456)
+    jobs.enqueue(queued_run, "session-b", "resume")
+
+    suspended = jobs.suspend_active_for_cold_start()
+
+    assert set(suspended) == {running_run, queued_run}
+    assert jobs.active() == []
+    with connect() as db:
+        rows = db.execute(
+            "SELECT id, status, output_json FROM workflow_runs ORDER BY id"
+        ).fetchall()
+        job_rows = db.execute(
+            "SELECT run_id, status, last_error FROM graphflow_jobs ORDER BY run_id"
+        ).fetchall()
+    assert [row["status"] for row in rows] == ["technical_error", "technical_error"]
+    assert all("restart_required" in row["output_json"] for row in rows)
+    assert [row["status"] for row in job_rows] == ["cancelled", "cancelled"]
+    assert all("Suspended after app restart" in row["last_error"] for row in job_rows)
+
+
 def test_pause_and_resume_keep_run_and_job_aligned(tmp_path, monkeypatch):
     monkeypatch.setenv("POWER_TEAMS_DB", str(tmp_path / "controls.db"))
     init_db()
