@@ -412,9 +412,11 @@ def repair_bindings_endpoint() -> dict:
 def list_opencode_servers() -> dict:
     """List known OpenCode server rows."""
     rm = _resolve_runtime_manager()
+    reconciled = rm.reconcile_servers()
     servers = rm.list_servers()
     return {
         "servers": servers,
+        "reconciled": reconciled,
         "managed_count": sum(1 for s in servers if s.get("owner") == "power_teams"),
         "external_count": sum(1 for s in servers if s.get("owner") == "external"),
         "ignored_count": sum(1 for s in servers if s.get("status") == "ignored"),
